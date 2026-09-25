@@ -20,8 +20,11 @@ const envSchema = z.object({
 
   MAP_TILE_URL: z.string().default("https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
   MAP_TILE_ATTRIBUTION: z.string().default("&copy; OpenStreetMap contributors"),
-  /** Vector style for MapLibre GL. OpenFreeMap needs no API key. */
-  MAP_STYLE_URL: z.string().default("https://tiles.openfreemap.org/styles/liberty"),
+  /**
+   * Optional vector style URL for MapLibre GL (e.g. an OpenFreeMap style).
+   * Empty = classic raster street tiles (the old look), built from MAP_TILE_URL.
+   */
+  MAP_STYLE_URL: z.string().default(""),
   GEOCODING_PROVIDER: z.enum(["local", "nominatim"]).default("local"),
   NOMINATIM_URL: z.string().default("https://nominatim.openstreetmap.org"),
   NOMINATIM_USER_AGENT: z.string().default("Dwellwise/0.1 (self-hosted)"),

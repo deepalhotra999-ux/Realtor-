@@ -1,15 +1,38 @@
 "use client";
 
 import * as maplibregl from "maplibre-gl";
+import type { StyleSpecification } from "maplibre-gl";
 import type { FeatureCollection, Polygon } from "geojson";
 import type { MapConfig } from "@/providers/map/types";
 
+/** Free OpenFreeMap vector style (no API key) — usable via MAP_STYLE_URL. */
 export const OPENFREEMAP_LIBERTY = "https://tiles.openfreemap.org/styles/liberty";
 
 /**
- * Shared MapLibre GL helpers for the Dwellwise maps. All base maps use the
- * free OpenFreeMap vector style (no API key required); `config.styleUrl`
- * overrides it when the environment provides another style.
+ * Classic raster street style built from XYZ tiles — the same look the old
+ * Leaflet map had (default: OpenStreetMap standard tiles). Used whenever no
+ * vector `styleUrl` override is configured.
+ */
+export function rasterStyle(config: MapConfig): StyleSpecification {
+  return {
+    version: 8,
+    sources: {
+      "dw-raster": {
+        type: "raster",
+        tiles: [config.tileUrl],
+        tileSize: 256,
+        maxzoom: config.maxZoom,
+        attribution: config.attribution,
+      },
+    },
+    layers: [{ id: "dw-raster", type: "raster", source: "dw-raster" }],
+  };
+}
+
+/**
+ * Shared MapLibre GL helpers for the Dwellwise maps. By default the maps use
+ * the classic raster street tiles (the old look); `config.styleUrl` switches
+ * to a vector style when the environment provides one.
  */
 export function createMaplibreMap(
   container: HTMLElement,
@@ -18,7 +41,7 @@ export function createMaplibreMap(
 ): maplibregl.Map {
   return new maplibregl.Map({
     container,
-    style: config.styleUrl ?? OPENFREEMAP_LIBERTY,
+    style: config.styleUrl || rasterStyle(config),
     center: [opts.lng, opts.lat],
     zoom: opts.zoom,
     maxZoom: config.maxZoom,

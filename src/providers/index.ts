@@ -86,7 +86,7 @@ export function getMap(): MapProvider {
     env.MAP_TILE_URL,
     env.MAP_TILE_ATTRIBUTION,
     19,
-    env.MAP_STYLE_URL,
+    env.MAP_STYLE_URL || undefined,
   ));
 }
 
