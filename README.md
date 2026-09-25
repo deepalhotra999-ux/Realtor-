@@ -21,6 +21,11 @@ free/local/open-source default, so you can swap in hosted services later without
 > **Demo data:** all listings, agents, brokerages and reviews are fictional and generated locally.
 > Dwellwise does not include or claim to have MLS data.
 
+## Host the demo on Netlify (free)
+
+Import this repository in Netlify and deploy — the database, schema, demo data, secrets, photo storage
+and background jobs are set up automatically. See [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ## Quick start
 
 Prerequisites: Node.js ≥ 20.9, pnpm, and PostgreSQL 16 with PostGIS (Docker is the easiest way).

@@ -43,3 +43,7 @@ next-env.d.ts
 
 # local storage (uploaded media, mock outboxes)
 /storage/
+
+# netlify (per-deploy secrets generated at build; local CLI state)
+/netlify/generated.json
+.netlify/

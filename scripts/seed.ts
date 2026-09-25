@@ -148,9 +148,19 @@ const REVIEW_BODIES = [
 ];
 
 async function main() {
-  if (process.env.NODE_ENV === "production")
-    throw new Error("Refusing to seed a production database");
+  // Seeding wipes every table. Production refuses unless this is an explicit demo.
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_SEED !== "true")
+    throw new Error("Refusing to seed a production database (set ALLOW_DEMO_SEED=true for demos)");
   const { db, sql: pg, close } = connect();
+  if (process.env.SEED_IF_EMPTY === "true") {
+    // Hosted demos run this on every boot: only seed a fresh database.
+    const [{ n }] = await pg<{ n: number }[]>`select count(*)::int as n from users`;
+    if (n > 0) {
+      console.log(`› Database already has ${n} users — skipping seed.`);
+      await close();
+      return;
+    }
+  }
   const rng = createRng(2026);
   const now = new Date();
   const day = 86_400_000;
@@ -376,7 +386,9 @@ async function main() {
   const demoAgent = agents[0];
 
   console.log("› Listings (fictional seed provider) …");
-  const provider = new SeedPropertyDataProvider({ count: 640, seed: 42, now });
+  // Fewer listings keeps hosted-demo builds fast (each is several round trips).
+  const count = Math.max(40, Math.min(2000, Number(process.env.SEED_LISTINGS) || 640));
+  const provider = new SeedPropertyDataProvider({ count, seed: 42, now });
   await runImport(db, provider, {
     resolveAgent: (ref) => {
       const idx = Number(ref?.split("-")[1] ?? 0);

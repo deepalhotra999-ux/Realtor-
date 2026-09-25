@@ -1,5 +1,5 @@
 import "server-only";
-import { getEnv } from "@/lib/env";
+import { demoConveniences, getEnv } from "@/lib/env";
 import { getDb } from "@/server/db";
 import { PostgresSearchProvider } from "@/server/search/postgres";
 import { AutoAIProvider, MockAIProvider } from "./ai/mock";
@@ -23,6 +23,7 @@ import type { SearchProvider } from "./search/types";
 import { OutboxSmsProvider, type SmsProvider } from "./sms/types";
 import { LocalStorageProvider } from "./storage/local";
 import { S3StorageProvider } from "./storage/s3";
+import { NetlifyBlobsStorageProvider } from "./storage/netlify-blobs";
 import type { StorageProvider } from "./storage/types";
 
 /**
@@ -88,17 +89,19 @@ export function getStorage(): StorageProvider {
   if (!reg.storage) {
     const env = getEnv();
     reg.storage =
-      env.STORAGE_PROVIDER === "s3"
-        ? new S3StorageProvider({
-            endPoint: env.S3_ENDPOINT,
-            port: env.S3_PORT,
-            useSSL: env.S3_USE_SSL,
-            accessKey: env.S3_ACCESS_KEY,
-            secretKey: env.S3_SECRET_KEY,
-            bucket: env.S3_BUCKET,
-            publicUrl: env.S3_PUBLIC_URL,
-          })
-        : new LocalStorageProvider(env.STORAGE_LOCAL_DIR);
+      env.STORAGE_PROVIDER === "netlify-blobs"
+        ? new NetlifyBlobsStorageProvider()
+        : env.STORAGE_PROVIDER === "s3"
+          ? new S3StorageProvider({
+              endPoint: env.S3_ENDPOINT,
+              port: env.S3_PORT,
+              useSSL: env.S3_USE_SSL,
+              accessKey: env.S3_ACCESS_KEY,
+              secretKey: env.S3_SECRET_KEY,
+              bucket: env.S3_BUCKET,
+              publicUrl: env.S3_PUBLIC_URL,
+            })
+          : new LocalStorageProvider(env.STORAGE_LOCAL_DIR);
   }
   return reg.storage;
 }
@@ -141,7 +144,7 @@ export function getPropertyData(): PropertyDataProvider {
 
 export function getIdentityVerification(): IdentityVerificationProvider {
   // Simulated decisions are a development convenience only.
-  return (reg.identity ??= new LocalIdentityProvider(getEnv().NODE_ENV !== "production"));
+  return (reg.identity ??= new LocalIdentityProvider(demoConveniences()));
 }
 
 export function getPayments(): PaymentProvider {

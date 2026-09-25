@@ -1,0 +1,22 @@
+# Netlify deployment for the Dwellwise demo — import the repo and deploy.
+# See docs/DEPLOY.md for what happens and the free-tier caveats.
+
+[build]
+  # 1. per-deploy secrets  2. schema migrations  3. demo data (only if the
+  # database is empty)  4. the Next.js build (Netlify's Next.js runtime is automatic)
+  command = "node scripts/netlify-prepare.mjs && pnpm db:migrate && pnpm db:seed && pnpm build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Build-time only (Netlify doesn't pass these to functions): the seed guard.
+  # Seeding wipes tables, so it only runs on an empty database.
+  SEED_IF_EMPTY = "true"
+  ALLOW_DEMO_SEED = "true"
+  # Enough listings for every demo city while keeping the first build quick.
+  SEED_LISTINGS = "240"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Long-lived caching for Next's hashed assets is handled by the Next.js runtime.

@@ -8,7 +8,7 @@ import { recordAudit, type AuditActor } from "@/server/audit";
 import { notify, sendEmail, sendSms } from "@/server/notify";
 import { getEmail, getIdentityVerification, getSms, getStorage } from "@/providers";
 import { ALLOWED_UPLOAD_TYPES } from "@/providers/storage/types";
-import { getEnv } from "@/lib/env";
+import { demoConveniences, getEnv } from "@/lib/env";
 import { verificationLevel, type Role } from "@/lib/trust";
 
 /**
@@ -143,7 +143,7 @@ export async function requestContactCode(
   const outbox = (kind === "email" ? getEmail().name : getSms().name) === "outbox";
   return {
     sentTo: target,
-    devCode: outbox && getEnv().NODE_ENV !== "production" ? code : undefined,
+    devCode: outbox && demoConveniences() ? code : undefined,
   };
 }
 

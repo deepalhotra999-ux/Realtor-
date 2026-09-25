@@ -10,7 +10,15 @@ export type Database = PostgresJsDatabase<typeof schema>;
 const globalForDb = globalThis as unknown as { __dwDb?: Database; __dwSql?: postgres.Sql };
 
 function create(): Database {
-  const sql = postgres(getEnv().DATABASE_URL, { max: 10, prepare: true });
+  const url = getEnv().DATABASE_URL;
+  // Serverless hosts: few connections per instance, and transaction-mode
+  // poolers (Neon "-pooler" URLs) don't keep prepared statements.
+  const serverless = Boolean(process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  const sql = postgres(url, {
+    max: serverless ? 2 : 10,
+    prepare: !url.includes("-pooler"),
+    idle_timeout: serverless ? 20 : undefined,
+  });
   globalForDb.__dwSql = sql;
   return drizzle(sql, { schema, casing: "snake_case" });
 }
