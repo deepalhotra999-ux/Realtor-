@@ -66,7 +66,10 @@ let cached: Env | undefined;
 
 export function getEnv(): Env {
   if (!cached) {
-    const parsed = envSchema.safeParse(emptyToUndefined(process.env));
+    const source = emptyToUndefined(process.env);
+    // On Netlify, the managed Postgres (Netlify Database) is exposed as NETLIFY_DB_URL.
+    source.DATABASE_URL ??= source.NETLIFY_DB_URL;
+    const parsed = envSchema.safeParse(source);
     if (!parsed.success) {
       throw new Error(`Invalid environment configuration:\n${z.prettifyError(parsed.error)}`);
     }

@@ -3,7 +3,9 @@ import postgres from "postgres";
 import * as schema from "../src/server/db/schema";
 
 export const DATABASE_URL =
-  process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/dwellwise";
+  process.env.DATABASE_URL ||
+  process.env.NETLIFY_DB_URL ||
+  "postgres://postgres:postgres@localhost:5432/dwellwise";
 
 export function connect() {
   const sql = postgres(DATABASE_URL, { max: 1, onnotice: () => {} });
