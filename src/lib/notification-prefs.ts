@@ -13,6 +13,10 @@ export const NOTIFICATION_TYPES = {
   alert: { label: "Saved-search alerts", description: "New homes matching your saved searches." },
   board: { label: "Shared boards", description: "Comments and homes added by co-searchers." },
   billing: { label: "Billing", description: "Receipts, trials and plan changes. Always emailed." },
+  account: {
+    label: "Account & security",
+    description: "Verification results, warnings and access changes. Always emailed.",
+  },
 } as const;
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES;
@@ -20,13 +24,29 @@ export type Channel = "email" | "inApp";
 export const NOTIFICATION_TYPE_KEYS = Object.keys(NOTIFICATION_TYPES) as NotificationType[];
 
 /** Transactional types that cannot be switched off by email. */
-const REQUIRED_EMAIL: NotificationType[] = ["billing"];
+const REQUIRED_EMAIL: NotificationType[] = ["billing", "account"];
 
 export type NotificationPrefs = Record<Channel, Record<NotificationType, boolean>>;
 
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
-  email: { lead: true, tour: true, message: true, alert: true, board: false, billing: true },
-  inApp: { lead: true, tour: true, message: true, alert: true, board: true, billing: true },
+  email: {
+    lead: true,
+    tour: true,
+    message: true,
+    alert: true,
+    board: false,
+    billing: true,
+    account: true,
+  },
+  inApp: {
+    lead: true,
+    tour: true,
+    message: true,
+    alert: true,
+    board: true,
+    billing: true,
+    account: true,
+  },
 };
 
 export function parseNotificationPrefs(raw: unknown): NotificationPrefs {

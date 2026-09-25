@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
+  BadgeCheck,
   Bell,
   Briefcase,
   CreditCard,
@@ -104,10 +105,13 @@ export function UserMenu({ user }: { user: MenuUser }) {
             </Link>
           ) : null}
           {!pro ? (
-            <Link href="/sell" className={item}>
-              <LayoutDashboard className="size-4" /> List a property
+            <Link href="/pro/listings" className={item}>
+              <LayoutDashboard className="size-4" /> List your property
             </Link>
           ) : null}
+          <Link href="/account/verification" className={item}>
+            <BadgeCheck className="size-4" /> Verify account
+          </Link>
           <div className="bg-line my-1 h-px" />
           <form action={logoutAction}>
             <button type="submit" className={`${item} w-full`}>

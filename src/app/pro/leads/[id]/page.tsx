@@ -10,7 +10,7 @@ import {
   StickyNote,
 } from "lucide-react";
 import { z } from "zod";
-import { requirePro } from "@/server/auth/session";
+import { requireWorkspace } from "@/server/auth/session";
 import { can } from "@/server/entitlements";
 import { getLead } from "@/server/pro/queries";
 import { completeTaskAction, updateLeadStageAction } from "@/server/actions/pro";
@@ -37,7 +37,7 @@ const ICONS = {
 
 export default async function LeadPage(props: PageProps<"/pro/leads/[id]">) {
   const { id } = await props.params;
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const crm = await can(user.id, FEATURES.CRM);
   if (!crm.allowed) return <UpgradeNotice feature="The lead CRM" decision={crm} />;
   if (!z.string().uuid().safeParse(id).success) notFound();

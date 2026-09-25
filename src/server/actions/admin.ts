@@ -15,9 +15,9 @@ import {
   plans,
   reports,
   reviews,
-  sessions,
   subscriptions,
   users,
+  verifications,
 } from "@/server/db/schema";
 import { requireAdmin } from "@/server/auth/session";
 import { invalidateFlagCache, updateSettings } from "@/server/settings";
@@ -25,6 +25,12 @@ import { sendEmail } from "@/server/notify";
 import { runSavedSearchAlerts } from "@/server/jobs/alerts";
 import { runScheduleNow } from "@/server/jobs/queue";
 import { recordAudit } from "@/server/audit";
+import { reinstateUser, suspendUser } from "@/server/trust/enforcement";
+import {
+  decideVerification,
+  recomputeVerificationLevel,
+  revokeVerification,
+} from "@/server/trust/verification";
 import { refreshAgentRating } from "@/server/agents";
 import { getAI } from "@/providers";
 import {
@@ -57,7 +63,9 @@ const uuid = z.string().uuid();
 
 export async function setUserRoleAction(userId: string, role: string) {
   const admin = await requireAdmin();
-  const r = z.enum(["consumer", "agent", "broker", "property_manager", "admin"]).parse(role);
+  const r = z
+    .enum(["consumer", "agent", "broker", "property_manager", "developer", "admin"])
+    .parse(role);
   const id = uuid.parse(userId);
   if (id === admin.id && r !== "admin") throw new Error("You can't remove your own admin role.");
   const db = getDb();
@@ -73,26 +81,73 @@ export async function setUserRoleAction(userId: string, role: string) {
       .onConflictDoNothing();
   }
   await audit(admin.id, "user.role", "user", id, { role: r });
+  // Level 3 depends on having a professional role.
+  await recomputeVerificationLevel(id, { type: "admin", id: admin.id });
   revalidatePath("/admin/users");
 }
 
 export async function setUserStatusAction(userId: string, status: string) {
   const admin = await requireAdmin();
-  const s = z.enum(["active", "suspended", "pending"]).parse(status);
+  const s = z.enum(["active", "suspended"]).parse(status);
   const id = uuid.parse(userId);
   if (id === admin.id) throw new Error("You can't change your own status.");
-  const db = getDb();
-  await db.update(users).set({ status: s }).where(eq(users.id, id));
-  if (s === "suspended") await db.delete(sessions).where(eq(sessions.userId, id));
-  await audit(admin.id, "user.status", "user", id, { status: s });
+  // Quick actions from the users list; the investigation page offers the full set.
+  const actor = { type: "admin" as const, id: admin.id };
+  if (s === "suspended") await suspendUser(id, "Suspended by an administrator", actor);
+  else await reinstateUser(id, "Reinstated by an administrator", actor);
   revalidatePath("/admin/users");
 }
 
+/**
+ * Admin override for the agent badge. The badge is derived from verification
+ * records, so "verify" records admin-approved identity + license checks and
+ * "unverify" revokes the license check — never a bare flag flip.
+ */
 export async function setAgentVerifiedAction(userId: string, verified: boolean) {
   const admin = await requireAdmin();
   const id = uuid.parse(userId);
-  await getDb().update(agentProfiles).set({ verified }).where(eq(agentProfiles.userId, id));
-  await audit(admin.id, "agent.verify", "user", id, { verified });
+  const actor = { type: "admin" as const, id: admin.id };
+  const db = getDb();
+  if (verified) {
+    const have = await db
+      .select({ kind: verifications.kind })
+      .from(verifications)
+      .where(and(eq(verifications.userId, id), eq(verifications.status, "approved")));
+    const [u] = await db
+      .select({ email: users.emailVerifiedAt })
+      .from(users)
+      .where(eq(users.id, id));
+    if (!u?.email)
+      await db.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, id));
+    for (const kind of ["identity", "license"] as const) {
+      if (have.some((h) => h.kind === kind)) continue;
+      const [row] = await db
+        .insert(verifications)
+        .values({
+          userId: id,
+          kind,
+          status: "pending",
+          provider: "admin",
+          data: { manual: "true" },
+        })
+        .returning({ id: verifications.id });
+      await decideVerification(row.id, "approved", "Verified manually by an administrator", actor);
+    }
+  } else {
+    const approved = await db
+      .select({ id: verifications.id })
+      .from(verifications)
+      .where(
+        and(
+          eq(verifications.userId, id),
+          eq(verifications.kind, "license"),
+          eq(verifications.status, "approved"),
+        ),
+      );
+    for (const v of approved)
+      await revokeVerification(v.id, "Verification removed by an administrator", actor);
+  }
+  await recomputeVerificationLevel(id, actor);
   revalidatePath("/admin/agents");
 }
 

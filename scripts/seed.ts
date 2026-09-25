@@ -20,8 +20,10 @@ import { createRng } from "../src/lib/random";
 import { slugify } from "../src/lib/slug";
 import {
   aiSettingsSchema,
+  automationSettingsSchema,
   generalSettingsSchema,
   monetizationSettingsSchema,
+  trustSettingsSchema,
 } from "../src/lib/settings-schema";
 
 const FIRST = [
@@ -167,6 +169,8 @@ async function main() {
   await db.insert(s.appSettings).values([
     { key: "general", value: generalSettingsSchema.parse({}) },
     { key: "monetization", value: monetizationSettingsSchema.parse({}) },
+    { key: "trust", value: trustSettingsSchema.parse({}) },
+    { key: "automation", value: automationSettingsSchema.parse({}) },
     { key: "ai", value: aiSettingsSchema.parse({}) },
   ]);
   await db.insert(s.featureFlags).values(DEFAULT_FLAGS);
@@ -210,6 +214,7 @@ async function main() {
       role: "admin",
       passwordHash: adminHash,
       emailVerifiedAt: now,
+      verificationLevel: 1,
     })
     .returning();
   const [buyer] = await db
@@ -220,6 +225,7 @@ async function main() {
       role: "consumer",
       passwordHash: demoHash,
       emailVerifiedAt: now,
+      verificationLevel: 1,
       preferences: {
         listingType: "sale",
         cities: ["Austin"],
@@ -237,6 +243,7 @@ async function main() {
       role: "consumer",
       passwordHash: demoHash,
       emailVerifiedAt: now,
+      verificationLevel: 1,
     })
     .returning();
 
@@ -281,6 +288,8 @@ async function main() {
     const name = i === 0 ? "Jamie Agent" : `${rng.pick(FIRST)} ${rng.pick(LAST)}`;
     const email = i === 0 ? "agent@dwellwise.local" : `${slugify(name)}.agent${i}@example.test`;
     const role = i % 12 === 1 ? "broker" : i % 16 === 5 ? "property_manager" : "agent";
+    // The demo agent is always verified; others vary. Badges mirror real checks below.
+    const verified = i === 0 || rng.bool(0.7);
     const [u] = await db
       .insert(s.users)
       .values({
@@ -289,6 +298,7 @@ async function main() {
         role,
         passwordHash: demoHash,
         emailVerifiedAt: now,
+        verificationLevel: verified ? 3 : 1,
         phone: `(555) 02${String(i).padStart(2, "0")}-${String(4000 + i * 13).slice(-4)}`,
       })
       .returning();
@@ -320,9 +330,47 @@ async function main() {
         3,
       ),
       phone: u.phone,
-      verified: rng.bool(0.7),
+      verified,
       closedDeals12mo: rng.int(2, 46),
     });
+    // Level 3 = email + identity + license checks on record (fictional, seed-approved).
+    await db.insert(s.verifications).values([
+      {
+        userId: u.id,
+        kind: "email",
+        status: "approved",
+        provider: "seed",
+        subject: email,
+        reviewedAt: now,
+      },
+      ...(verified
+        ? [
+            {
+              userId: u.id,
+              kind: "identity" as const,
+              status: "approved" as const,
+              provider: "seed",
+              reviewedAt: now,
+              decisionReason: "Fictional demo data",
+              expiresAt: new Date(now.getTime() + 730 * day),
+            },
+            {
+              userId: u.id,
+              kind: "license" as const,
+              status: "approved" as const,
+              provider: "seed",
+              subject: `DEMO-${metro.state}-${100000 + i * 17}`,
+              data: {
+                licenseNumber: `DEMO-${metro.state}-${100000 + i * 17}`,
+                licenseState: metro.state,
+              },
+              reviewedAt: now,
+              decisionReason: "Fictional demo data",
+              expiresAt: new Date(now.getTime() + 365 * day),
+            },
+          ]
+        : []),
+    ]);
     agents.push({ id: u.id, brokerageId: brokerage.id, metro });
   }
   const demoAgent = agents[0];

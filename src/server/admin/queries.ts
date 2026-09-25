@@ -147,6 +147,7 @@ export async function listUsers(opts: { q?: string; role?: string; page: number 
         email: users.email,
         role: users.role,
         status: users.status,
+        level: users.verificationLevel,
         createdAt: users.createdAt,
         listings: sql<number>`(select count(*)::int from listings l where l.agent_id = users.id or l.owner_id = users.id)`,
         plan: sql<

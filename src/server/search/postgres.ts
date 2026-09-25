@@ -14,6 +14,15 @@ import { getGeocoding } from "@/providers";
 
 const VISIBLE_STATUSES = ["active", "coming_soon"] as const;
 
+/**
+ * Hide listings whose agent/owner is suspended, banned or deleted. Evaluated
+ * at query time, so reinstating the account restores them automatically.
+ */
+export const ownerInGoodStanding = sql`not exists (
+  select 1 from users acct
+  where acct.id in (${listings.agentId}, ${listings.ownerId})
+    and acct.status in ('suspended', 'banned', 'deleted'))`;
+
 /** PostgreSQL full-text + PostGIS search. Zero external services. */
 export class PostgresSearchProvider implements SearchProvider {
   readonly name = "postgres";
@@ -24,6 +33,7 @@ export class PostgresSearchProvider implements SearchProvider {
     const c: SQL[] = [
       eq(listings.listingType, q.listingType),
       inArray(listings.status, [...VISIBLE_STATUSES]),
+      ownerInGoodStanding,
     ];
     if (q.city) c.push(sql`lower(${properties.city}) = lower(${q.city})`);
     if (q.state) c.push(eq(properties.state, q.state));
@@ -243,6 +253,7 @@ export class PostgresSearchProvider implements SearchProvider {
       .where(
         and(
           inArray(listings.status, [...VISIBLE_STATUSES]),
+          ownerInGoodStanding,
           sql`${properties.street} ILIKE ${like}`,
         ),
       )

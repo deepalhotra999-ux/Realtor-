@@ -7,6 +7,7 @@ import { getDb } from "@/server/db";
 import { agentProfiles, users } from "@/server/db/schema";
 import { getSettings } from "@/server/settings";
 import { recordAudit } from "@/server/audit";
+import { recordSignal } from "@/server/trust/signals";
 import { slugify } from "@/lib/slug";
 import { hashPassword, passwordProblems, verifyPassword } from "./password";
 import { BLOCKED_STATUSES, createSession, destroySession } from "./session";
@@ -51,6 +52,7 @@ export async function loginAction(_prev: AuthState, form: FormData): Promise<Aut
     };
 
   await createSession(user.id);
+  await recordSignal(user.id, "login");
   const fallback = user.role === "admin" ? "/admin" : user.role === "consumer" ? "/" : "/pro";
   redirect(safeNext(form.get("next"), fallback));
 }
@@ -59,7 +61,9 @@ const registerSchema = z.object({
   name: z.string().trim().min(2, "Enter your name.").max(80),
   email: z.string().trim().toLowerCase().email("Enter a valid email."),
   password: z.string(),
-  role: z.enum(["consumer", "agent", "broker", "property_manager"]).default("consumer"),
+  role: z
+    .enum(["consumer", "agent", "broker", "property_manager", "developer"])
+    .default("consumer"),
 });
 
 export async function registerAction(_prev: AuthState, form: FormData): Promise<AuthState> {
@@ -113,8 +117,16 @@ export async function registerAction(_prev: AuthState, form: FormData): Promise<
     target: { type: "user", id: user.id },
     meta: { role: user.role },
   });
+  const fp = await recordSignal(user.id, "signup", { role: user.role });
+  if (fp.ip)
+    await db
+      .update(users)
+      .set({ signupIp: fp.ip })
+      .where(sql`${users.id} = ${user.id}`);
   await createSession(user.id);
-  redirect(safeNext(form.get("next"), pro ? "/pro" : "/"));
+  // Email verification comes first; the page links on to where they were going.
+  const next = safeNext(form.get("next"), pro ? "/pro" : "/");
+  redirect(`/account/verification?welcome=1&next=${encodeURIComponent(next)}`);
 }
 
 export async function logoutAction() {

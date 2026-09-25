@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Search } from "lucide-react";
 import { listUsers, PAGE_SIZE } from "@/server/admin/queries";
 import { requireAdmin } from "@/server/auth/session";
@@ -25,6 +26,7 @@ const ROLE_OPTS = [
   { value: "agent", label: "Agent" },
   { value: "broker", label: "Broker" },
   { value: "property_manager", label: "Property manager" },
+  { value: "developer", label: "Developer" },
   { value: "admin", label: "Admin" },
 ];
 
@@ -85,7 +87,9 @@ export default async function UsersPage(props: PageProps<"/admin/users">) {
                   <Avatar name={u.name} size={32} />
                   <div className="min-w-0">
                     <p className="truncate font-medium">
-                      {u.name}
+                      <Link href={`/admin/users/${u.id}`} className="hover:text-brand-600">
+                        {u.name}
+                      </Link>
                       {u.id === me.id ? (
                         <span className="text-muted ml-1.5 text-xs">(you)</span>
                       ) : null}
@@ -108,6 +112,7 @@ export default async function UsersPage(props: PageProps<"/admin/users">) {
               </Td>
               <Td>
                 <StatusPill status={u.status} />
+                <p className="text-muted mt-1 text-xs">Level {u.level}</p>
               </Td>
               <Td>
                 {u.plan ? (

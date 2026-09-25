@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Plus, Search } from "lucide-react";
-import { requirePro } from "@/server/auth/session";
+import { requireWorkspace } from "@/server/auth/session";
 import { can } from "@/server/entitlements";
 import { listMyLeads } from "@/server/pro/queries";
 import { updateLeadStageAction } from "@/server/actions/pro";
@@ -25,7 +25,7 @@ function scoreTone(score: number) {
 
 export default async function LeadsPage(props: PageProps<"/pro/leads">) {
   const sp = (await props.searchParams) as SP;
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const crm = await can(user.id, FEATURES.CRM);
   if (!crm.allowed)
     return (

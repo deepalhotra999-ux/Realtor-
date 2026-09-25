@@ -16,7 +16,9 @@ import {
   propertyMedia,
   tours,
 } from "@/server/db/schema";
-import { requirePro, type SessionUser } from "@/server/auth/session";
+import { PRO_ROLES, requirePro, requireWorkspace, type SessionUser } from "@/server/auth/session";
+import { assertCanEditListings, assertCanPublish, TrustError } from "@/server/trust/permissions";
+import { AccountRestrictedError } from "@/server/trust/enforcement";
 import { getSettings } from "@/server/settings";
 import { assertCan, EntitlementError } from "@/server/entitlements";
 import { notify, sendEmail } from "@/server/notify";
@@ -25,7 +27,12 @@ import { AIFeatureDisabledError } from "@/server/ai/run";
 import { getMyListing } from "@/server/pro/queries";
 import { getGeocoding, getStorage } from "@/providers";
 import { ALLOWED_UPLOAD_TYPES } from "@/providers/storage/types";
-import { AMENITY_KEYS, LISTING_STATUSES, PROPERTY_TYPES } from "@/lib/domain";
+import {
+  AMENITY_KEYS,
+  LISTING_STATUSES,
+  OWNER_LISTING_STATUSES,
+  PROPERTY_TYPES,
+} from "@/lib/domain";
 import { FEATURES } from "@/lib/entitlements/catalog";
 import { ACTIVITY_TYPES, followUpDaysFor, LEAD_STAGES, type LeadStage } from "@/lib/crm";
 import type { WriterFacts } from "@/lib/ai/listing-writer";
@@ -37,7 +44,13 @@ const uuid = z.string().uuid();
 const LIVE = ["active", "coming_soon", "pending"] as const;
 
 function errorMessage(err: unknown, fallback: string) {
-  if (err instanceof EntitlementError || err instanceof AIFeatureDisabledError) return err.message;
+  if (
+    err instanceof EntitlementError ||
+    err instanceof AIFeatureDisabledError ||
+    err instanceof TrustError ||
+    err instanceof AccountRestrictedError
+  )
+    return err.message;
   console.error("[pro]", err);
   return fallback;
 }
@@ -112,19 +125,31 @@ function readListingForm(form: FormData) {
   });
 }
 
-/** Whether a publish is allowed right now; returns the status to store. */
-async function publishStatus(user: SessionUser, currentlyLive: boolean) {
+/**
+ * Whether a publish is allowed right now; returns the status to store.
+ * Trust rules (verification level, restrictions, probation limits) come first,
+ * then plan entitlements. Listings that need review wait in `pending_review`.
+ */
+async function publishStatus(
+  user: SessionUser,
+  currentlyLive: boolean,
+): Promise<"active" | "pending_review"> {
+  const { needsReview } = await assertCanPublish(user.id, currentlyLive);
   const general = await getSettings("general");
-  if (general.requireListingApproval && user.role !== "admin") return "draft" as const;
+  if ((general.requireListingApproval || needsReview) && user.role !== "admin")
+    return "pending_review";
   if (!currentlyLive) await assertCan(user.id, FEATURES.LISTINGS_ACTIVE);
-  return "active" as const;
+  return "active";
 }
+
+/** Listings under moderation can't be changed by their owner. */
+const LOCKED_STATUSES: string[] = ["suspended", "removed"];
 
 export async function saveListingAction(
   _prev: ProFormState,
   form: FormData,
 ): Promise<ProFormState> {
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const parsed = readListingForm(form);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form." };
   const d = parsed.data;
@@ -133,6 +158,15 @@ export async function saveListingAction(
 
   const existing = d.id ? await getMyListing(user, d.id) : null;
   if (d.id && !existing) return { error: "Listing not found." };
+  if (existing && LOCKED_STATUSES.includes(existing.l.status))
+    return {
+      error: "This listing is under review by our trust & safety team and can't be edited.",
+    };
+  try {
+    await assertCanEditListings(user.id);
+  } catch (err) {
+    return { error: errorMessage(err, "You can't edit listings right now.") };
+  }
 
   // Location: explicit coordinates win, then the existing point, then geocoding.
   let lat =
@@ -239,6 +273,8 @@ export async function saveListingAction(
       .insert(properties)
       .values({ ...propertyValues, source: "manual" })
       .returning({ id: properties.id });
+    // Professionals list as the agent; private sellers list as the owner.
+    const professional = PRO_ROLES.includes(user.role);
     const [l] = await db
       .insert(listings)
       .values({
@@ -246,8 +282,9 @@ export async function saveListingAction(
         slug: listingSlug(d, randomUUID()),
         propertyId: p.id,
         status: status ?? "draft",
-        agentId: user.id,
-        brokerageId: profile?.brokerageId ?? null,
+        agentId: professional ? user.id : null,
+        ownerId: professional ? null : user.id,
+        brokerageId: professional ? (profile?.brokerageId ?? null) : null,
         listedAt: status === "active" ? new Date() : null,
       })
       .returning({ id: listings.id });
@@ -258,17 +295,13 @@ export async function saveListingAction(
   revalidatePath("/pro/listings");
   revalidatePath(`/pro/listings/${listingId}`);
   const note =
-    intent === "publish" && status === "draft"
-      ? "submitted"
-      : status === "active"
-        ? "published"
-        : "saved";
+    status === "pending_review" ? "submitted" : status === "active" ? "published" : "saved";
   if (!existing) redirect(`/pro/listings/${listingId}?${note}=1`);
   return {
     ok: true,
     message:
       note === "submitted"
-        ? "Saved and submitted — an admin will review it before it goes live."
+        ? "Saved and submitted for review — it goes live once it's approved."
         : note === "published"
           ? "Published. It's live on the marketplace."
           : "Changes saved.",
@@ -293,16 +326,26 @@ async function recordListed(propertyId: string, listingId: string, price: number
     .values({ propertyId, listingId, event: "listed", price, occurredAt: new Date() });
 }
 
-export async function setMyListingStatusAction(listingId: string, status: string) {
-  const user = await requirePro();
-  const s = z.enum(LISTING_STATUSES).parse(status);
+export async function setMyListingStatusAction(
+  listingId: string,
+  status: string,
+): Promise<{ error?: string } | void> {
+  const user = await requireWorkspace();
+  const parsedStatus = z.enum(OWNER_LISTING_STATUSES).safeParse(status);
+  if (!parsedStatus.success) return { error: "That status is set by our team, not by owners." };
+  const s = parsedStatus.data;
   const mine = await getMyListing(user, uuid.parse(listingId));
-  if (!mine) throw new Error("Listing not found.");
+  if (!mine) return { error: "Listing not found." };
+  if (LOCKED_STATUSES.includes(mine.l.status))
+    return { error: "This listing is under review by our trust & safety team." };
   const wasLive = (LIVE as readonly string[]).includes(mine.l.status);
   let next: (typeof LISTING_STATUSES)[number] = s;
   if (s === "active" || s === "coming_soon") {
-    const allowed = await publishStatus(user, wasLive);
-    if (allowed === "draft") next = "draft";
+    try {
+      if ((await publishStatus(user, wasLive)) === "pending_review") next = "pending_review";
+    } catch (err) {
+      return { error: errorMessage(err, "Couldn't publish this listing.") };
+    }
   }
   const closing = s === "sold" || s === "rented";
   await getDb()
@@ -334,7 +377,7 @@ export async function setMyListingFeaturedAction(
   listingId: string,
   featured: boolean,
 ): Promise<{ error?: string } | void> {
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const mine = await getMyListing(user, uuid.parse(listingId));
   if (!mine) return { error: "Listing not found." };
   if (featured) {
@@ -368,7 +411,7 @@ export async function uploadListingPhotosAction(
   _prev: ProFormState,
   form: FormData,
 ): Promise<ProFormState> {
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const mine = await getMyListing(user, uuid.parse(listingId));
   if (!mine) return { error: "Listing not found." };
   const files = form.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
@@ -414,7 +457,7 @@ async function ownedMedia(user: SessionUser, mediaId: string) {
 }
 
 export async function deleteListingPhotoAction(mediaId: string) {
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const { media, listingId } = await ownedMedia(user, mediaId);
   await getDb().delete(propertyMedia).where(eq(propertyMedia.id, media.id));
   if (media.storageKey)
@@ -425,7 +468,7 @@ export async function deleteListingPhotoAction(mediaId: string) {
 }
 
 export async function moveListingPhotoAction(mediaId: string, direction: "up" | "down") {
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const { media, listingId } = await ownedMedia(user, mediaId);
   const db = getDb();
   const [neighbor] = await db
@@ -459,7 +502,7 @@ export type DraftState =
   { ok: true; text: string; provider: string } | { ok: false; error: string } | undefined;
 
 export async function generateListingDescriptionAction(form: FormData): Promise<DraftState> {
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const n = (k: string) => {
     const v = String(form.get(k) ?? "").trim();
     return v === "" || isNaN(Number(v)) ? null : Number(v);
@@ -511,7 +554,7 @@ function followUpFrom(stage: LeadStage) {
 }
 
 export async function updateLeadStageAction(leadId: string, stage: string) {
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const s = z.enum(LEAD_STAGES).parse(stage);
   const lead = await ownedLead(user.id, leadId);
   if (lead.stage === s) return;
@@ -541,7 +584,7 @@ const manualLeadSchema = z.object({
 });
 
 export async function createLeadAction(_prev: ProFormState, form: FormData): Promise<ProFormState> {
-  const user = await requirePro();
+  const user = await requireWorkspace();
   try {
     await assertCan(user.id, FEATURES.CRM);
   } catch (err) {
@@ -580,7 +623,7 @@ export async function addLeadActivityAction(
   _prev: ProFormState,
   form: FormData,
 ): Promise<ProFormState> {
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const lead = await ownedLead(user.id, leadId);
   const parsed = activitySchema.safeParse(Object.fromEntries(form.entries()));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
@@ -613,7 +656,7 @@ export async function addLeadActivityAction(
 }
 
 export async function completeTaskAction(activityId: string) {
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const db = getDb();
   const [a] = await db
     .select({ id: leadActivities.id, leadId: leadActivities.leadId })
@@ -632,7 +675,7 @@ export async function completeTaskAction(activityId: string) {
 }
 
 export async function draftFollowUpAction(leadId: string): Promise<DraftState> {
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const lead = await ownedLead(user.id, leadId);
   const [listing] = lead.listingId
     ? await getDb()
@@ -664,7 +707,7 @@ export async function emailLeadAction(
   _prev: ProFormState,
   form: FormData,
 ): Promise<ProFormState> {
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const lead = await ownedLead(user.id, leadId);
   if (!lead.email) return { error: "This lead has no email address." };
   const subject = z
@@ -697,7 +740,7 @@ export async function emailLeadAction(
 /* ── Tours ───────────────────────────────────────────────────────────────── */
 
 export async function setTourStatusAction(tourId: string, status: string) {
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const s = z.enum(["confirmed", "completed", "cancelled", "no_show"]).parse(status);
   const db = getDb();
   const [row] = await db

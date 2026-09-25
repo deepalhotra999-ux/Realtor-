@@ -12,6 +12,8 @@ import { LocalGeocodingProvider } from "./geocoding/local";
 import { NominatimGeocodingProvider } from "./geocoding/nominatim";
 import type { GeocodingProvider } from "./geocoding/types";
 import { XyzTileMapProvider, type MapProvider } from "./map/types";
+import { LocalIdentityProvider } from "./identity/local";
+import type { IdentityVerificationProvider } from "./identity/types";
 import { MockPaymentProvider } from "./payment/mock";
 import type { PaymentProvider } from "./payment/types";
 import { ResoWebApiProvider } from "./property-data/reso";
@@ -40,6 +42,7 @@ type Registry = {
   search?: SearchProvider;
   propertyData?: PropertyDataProvider;
   payment?: PaymentProvider;
+  identity?: IdentityVerificationProvider;
 };
 
 const g = globalThis as unknown as { __dwProviders?: Registry };
@@ -136,6 +139,11 @@ export function getPropertyData(): PropertyDataProvider {
   return reg.propertyData;
 }
 
+export function getIdentityVerification(): IdentityVerificationProvider {
+  // Simulated decisions are a development convenience only.
+  return (reg.identity ??= new LocalIdentityProvider(getEnv().NODE_ENV !== "production"));
+}
+
 export function getPayments(): PaymentProvider {
   const env = getEnv();
   return (reg.payment ??= new MockPaymentProvider(env.AUTH_SECRET, env.APP_URL));
@@ -154,5 +162,6 @@ export async function describeProviders() {
     search: getSearch().name,
     propertyData: getPropertyData().name,
     payment: getPayments().name,
+    identity: getIdentityVerification().name,
   };
 }

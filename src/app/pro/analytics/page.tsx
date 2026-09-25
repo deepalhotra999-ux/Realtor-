@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requirePro } from "@/server/auth/session";
+import { requireWorkspace } from "@/server/auth/session";
 import { can } from "@/server/entitlements";
 import { getProAnalytics } from "@/server/pro/queries";
 import {
@@ -25,7 +25,7 @@ const RANGES = [7, 30, 90] as const;
 
 export default async function ProAnalyticsPage(props: PageProps<"/pro/analytics">) {
   const sp = (await props.searchParams) as SP;
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const allowed = await can(user.id, FEATURES.ANALYTICS);
   if (!allowed.allowed)
     return (

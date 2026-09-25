@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { Briefcase, Building2, Home, KeyRound } from "lucide-react";
+import { Briefcase, Building2, HardHat, Home, KeyRound } from "lucide-react";
 import { registerAction, type AuthState } from "@/server/auth/actions";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ const ROLES = [
   { value: "agent", label: "I'm an agent", icon: Briefcase },
   { value: "broker", label: "I'm a broker", icon: Building2 },
   { value: "property_manager", label: "I manage rentals", icon: KeyRound },
+  { value: "developer", label: "I'm a developer", icon: HardHat },
 ] as const;
 
 export function RegisterForm({

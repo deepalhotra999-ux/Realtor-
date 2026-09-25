@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CalendarClock, Plus } from "lucide-react";
-import { requirePro } from "@/server/auth/session";
+import { requireWorkspace } from "@/server/auth/session";
 import { getProOverview } from "@/server/pro/queries";
 import { KPI, PageHeader, Panel, Pill, StatusPill } from "@/components/admin/ui";
 import { ButtonLink } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { LEAD_STAGE_LABELS, PIPELINE_STAGES } from "@/lib/crm";
 export const metadata = { title: "Overview" };
 
 export default async function ProOverviewPage() {
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const o = await getProOverview(user.id);
   const pipelineMax = Math.max(1, ...PIPELINE_STAGES.map((s) => o.stages[s] ?? 0));
 

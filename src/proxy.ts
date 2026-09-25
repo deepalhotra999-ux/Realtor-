@@ -23,5 +23,6 @@ export const config = {
     "/boards/:path*",
     "/billing/:path*",
     "/for-you",
+    "/account/:path*",
   ],
 };

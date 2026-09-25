@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Eye, Heart, Inbox, Plus } from "lucide-react";
-import { requirePro } from "@/server/auth/session";
+import { requireWorkspace } from "@/server/auth/session";
 import { listMyListings } from "@/server/pro/queries";
 import { setMyListingStatusAction } from "@/server/actions/pro";
 import { ActionSelect } from "@/components/admin/controls";
@@ -17,7 +17,7 @@ const STATUS_OPTS = LISTING_STATUSES.map((s) => ({ value: s, label: s.replace("_
 
 export default async function ProListingsPage(props: PageProps<"/pro/listings">) {
   const sp = (await props.searchParams) as SP;
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const status = str(sp, "status", "all");
   const { rows, counts } = await listMyListings(user, status);
   const all = Object.values(counts).reduce((a, b) => a + b, 0);

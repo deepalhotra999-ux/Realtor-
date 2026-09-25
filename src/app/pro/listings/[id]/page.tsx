@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { z } from "zod";
-import { requirePro } from "@/server/auth/session";
+import { requireWorkspace } from "@/server/auth/session";
 import { getMyListing } from "@/server/pro/queries";
 import { setMyListingFeaturedAction } from "@/server/actions/pro";
 import { Toggle } from "@/components/admin/controls";
@@ -15,7 +15,7 @@ export const metadata = { title: "Edit listing" };
 
 export default async function EditListingPage(props: PageProps<"/pro/listings/[id]">) {
   const [{ id }, sp] = await Promise.all([props.params, props.searchParams as Promise<SP>]);
-  const user = await requirePro();
+  const user = await requireWorkspace();
   if (!z.string().uuid().safeParse(id).success) notFound();
   const row = await getMyListing(user, id);
   if (!row) notFound();

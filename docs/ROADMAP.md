@@ -95,7 +95,25 @@ Zero paid services; every external capability behind a provider interface.
     actor type, rule, reason and changes, with filters and per-target history
   - "Automation & Trust" settings section (master switches; UI in 6.6)
   - Tests: unit (`src/lib/jobs.test.ts`) and Postgres integration (`pnpm test:int`)
-- 6.2 Verification & account permissions — next
+- **6.2 Verification & account permissions ✅**
+  - Levels 0–3 derived only from verification records (`src/lib/trust.ts`, `src/server/trust/verification.ts`):
+    email/phone codes (HMAC-hashed, TTL, attempt limits, resend throttle), identity and license checks with
+    private evidence (`private/` storage keys, admin-only audited viewer, deleted after the retention period),
+    expiry and re-derivation; agent badges mirror level 3
+  - `IdentityVerificationProvider` interface + free `LocalIdentityProvider` (admin review; simulated decisions
+    in development only) — a hosted KYC adapter can be registered later in `providers/index.ts`
+  - Capabilities: consumer / verified seller / verified agent / verified broker / property manager / developer;
+    publishing level per account type, seller listings and review threshold configurable (Settings → Trust)
+  - Probation / standard / trusted activity limits (listings, messages, contacts, links, promotions, daily
+    actions) enforced in server actions (`src/server/trust/permissions.ts`)
+  - AccountEnforcementService (`src/server/trust/enforcement.ts`): warn, restrict features, suspend, ban,
+    reinstate, lift; timed penalties lapse via the worker; configurable strike ladder; banned/suspended owners'
+    listings hidden at query time and restored on reinstatement
+  - Admin: account investigation page (`/admin/users/[id]`: restrictions, checks, strikes, listings, reports,
+    history, related accounts by network/device, enforcement, manual verification, change email, set
+    password), verification queue, Trust settings tab
+  - Users: `/account/verification`; new sign-ups go there first; signup/login signals recorded
+  - Tests: `src/lib/trust.test.ts`, `tests/integration/trust.int.test.ts`
 - 6.3 Risk engine & moderation
 - 6.4 Listing lifecycle & reports
 - 6.5 Promotions & ranking

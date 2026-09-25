@@ -3,3 +3,4 @@
  * automation modules here so the worker (and "Run now" in admin) sees them.
  */
 import "./handlers";
+import "@/server/trust/jobs";

@@ -78,11 +78,119 @@ export const automationSettingsSchema = z.object({
 });
 export type AutomationSettings = z.infer<typeof automationSettingsSchema>;
 
+const limitSchema = z.number().int().min(0).nullable();
+
+/** Per-tier activity caps. null = unlimited. */
+export const activityLimitsSchema = z.object({
+  activeListings: limitSchema,
+  messagesPerDay: limitSchema,
+  contactsPerDay: limitSchema,
+  linksPerMessage: limitSchema,
+  activePromotions: limitSchema,
+  actionsPerDay: limitSchema,
+});
+export type ActivityLimits = z.infer<typeof activityLimitsSchema>;
+
+export const STRIKE_ACTIONS = ["warn", "restrict", "suspend", "ban"] as const;
+export const RESTRICTABLE_FEATURES = [
+  "listings",
+  "messaging",
+  "contact",
+  "reviews",
+  "promotions",
+  "leads",
+  "api",
+] as const;
+export type RestrictableFeature = (typeof RESTRICTABLE_FEATURES)[number];
+
+export const strikeStepSchema = z.object({
+  /** Applies when a user's active strike count reaches this number. */
+  strikes: z.number().int().min(1).max(50),
+  action: z.enum(STRIKE_ACTIONS),
+  /** Duration for restrict/suspend; null = until an admin lifts it. */
+  days: z.number().int().min(1).max(3650).nullable().default(null),
+  features: z.array(z.enum(RESTRICTABLE_FEATURES)).default([]),
+});
+export type StrikeStep = z.infer<typeof strikeStepSchema>;
+
+/**
+ * Admin → Settings → Trust. Who may publish, verification rules, new-account
+ * probation limits and the strike ladder. Nothing here is hard-coded elsewhere.
+ */
+export const trustSettingsSchema = z.object({
+  /** Minimum verification level (0–3) to publish listings, per account type. */
+  publishLevel: z
+    .object({
+      consumer: z.number().int().min(0).max(3).default(2),
+      agent: z.number().int().min(0).max(3).default(1),
+      broker: z.number().int().min(0).max(3).default(1),
+      property_manager: z.number().int().min(0).max(3).default(1),
+      developer: z.number().int().min(0).max(3).default(2),
+    })
+    .default({ consumer: 2, agent: 1, broker: 1, property_manager: 1, developer: 2 }),
+  /** Let verified sellers (consumers at their publish level) list property themselves. */
+  sellerListingsEnabled: z.boolean().default(true),
+  /** Listings from accounts below this level wait in review before going live. */
+  reviewListingsBelowLevel: z.number().int().min(0).max(4).default(2),
+  /** Level 1 also needs a verified phone number. */
+  requirePhoneForLevel1: z.boolean().default(false),
+  /** Messaging/contacting/reviewing need a verified email. */
+  requireEmailToInteract: z.boolean().default(true),
+  verificationCodeTtlMinutes: z.number().int().min(2).max(120).default(15),
+  verificationCodeMaxAttempts: z.number().int().min(1).max(20).default(5),
+  /** Approved identity / license checks lapse after this many days (null = never). */
+  identityValidDays: z.number().int().min(1).nullable().default(730),
+  licenseValidDays: z.number().int().min(1).nullable().default(365),
+  /** Uploaded verification documents are deleted this many days after review. */
+  documentRetentionDays: z.number().int().min(0).max(365).default(30),
+  /** Accounts younger than this (or below level 1) are on probation. */
+  probationDays: z.number().int().min(0).max(365).default(14),
+  probationLimits: activityLimitsSchema.default({
+    activeListings: 1,
+    messagesPerDay: 20,
+    contactsPerDay: 10,
+    linksPerMessage: 0,
+    activePromotions: 0,
+    actionsPerDay: 150,
+  }),
+  standardLimits: activityLimitsSchema.default({
+    activeListings: 25,
+    messagesPerDay: 200,
+    contactsPerDay: 60,
+    linksPerMessage: 3,
+    activePromotions: 5,
+    actionsPerDay: 2000,
+  }),
+  /** Verified sellers/agents (level ≥ 2). */
+  trustedLimits: activityLimitsSchema.default({
+    activeListings: null,
+    messagesPerDay: 1000,
+    contactsPerDay: 300,
+    linksPerMessage: 10,
+    activePromotions: null,
+    actionsPerDay: null,
+  }),
+  strikesEnabled: z.boolean().default(true),
+  /** Strikes older than this stop counting. */
+  strikeWindowDays: z.number().int().min(1).max(3650).default(180),
+  violationTypes: z
+    .array(z.string().min(2).max(40))
+    .default(["spam", "scam", "fake_listing", "harassment", "discrimination", "other"]),
+  strikeLadder: z.array(strikeStepSchema).default([
+    { strikes: 1, action: "warn", days: 30, features: [] },
+    { strikes: 2, action: "restrict", days: 7, features: ["listings", "messaging"] },
+    { strikes: 3, action: "suspend", days: 30, features: [] },
+    { strikes: 5, action: "ban", days: null, features: [] },
+  ]),
+});
+export type TrustSettings = z.infer<typeof trustSettingsSchema>;
+
 export const SETTINGS_SECTIONS = {
   general: generalSettingsSchema,
   monetization: monetizationSettingsSchema,
   ai: aiSettingsSchema,
   automation: automationSettingsSchema,
+  trust: trustSettingsSchema,
 } as const;
 
 export type SettingsSection = keyof typeof SETTINGS_SECTIONS;

@@ -111,6 +111,20 @@ export async function requireRole(roles: Role[], next?: string): Promise<Session
 export const requireAdmin = (next = "/admin") => requireRole(["admin"], next);
 export const requirePro = (next = "/pro") => requireRole(PRO_ROLES, next);
 
+/**
+ * The listing workspace (/pro): professionals, plus private sellers when Admin →
+ * Trust allows seller listings. Publishing itself is gated by verification level.
+ */
+export async function requireWorkspace(next = "/pro"): Promise<SessionUser> {
+  const user = await requireUser(next);
+  if (PRO_ROLES.includes(user.role)) return user;
+  if (user.role === "consumer") {
+    const { getSettings } = await import("@/server/settings");
+    if ((await getSettings("trust")).sellerListingsEnabled) return user;
+  }
+  redirect("/?denied=1");
+}
+
 export async function purgeExpiredSessions() {
   await getDb().delete(sessions).where(lt(sessions.expiresAt, new Date()));
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Video, MapPin } from "lucide-react";
-import { requirePro } from "@/server/auth/session";
+import { requireWorkspace } from "@/server/auth/session";
 import { can } from "@/server/entitlements";
 import { listMyTours } from "@/server/pro/queries";
 import { setTourStatusAction } from "@/server/actions/pro";
@@ -16,7 +16,7 @@ export const metadata = { title: "Tours" };
 
 export default async function ToursPage(props: PageProps<"/pro/tours">) {
   const sp = (await props.searchParams) as SP;
-  const user = await requirePro();
+  const user = await requireWorkspace();
   const allowed = await can(user.id, FEATURES.TOURS);
   if (!allowed.allowed)
     return (

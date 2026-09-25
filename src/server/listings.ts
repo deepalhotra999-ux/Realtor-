@@ -14,8 +14,11 @@ import {
   users,
 } from "@/server/db/schema";
 import { getSearch } from "@/providers";
+import { ownerInGoodStanding } from "@/server/search/postgres";
 import { DEFAULT_QUERY, type SearchQuery } from "@/lib/search/query";
 import type { ListingDetail, ListingSummary } from "@/lib/listing-types";
+
+const HIDDEN_STATUSES: string[] = ["draft", "pending_review", "suspended", "removed"];
 
 export const getListingDetail = cache(async (slug: string): Promise<ListingDetail | null> => {
   const db = getDb();
@@ -48,7 +51,13 @@ export const getListingDetail = cache(async (slug: string): Promise<ListingDetai
     .leftJoin(brokerages, eq(listings.brokerageId, brokerages.id))
     .where(eq(listings.slug, slug))
     .limit(1);
-  if (!row || row.l.status === "draft") return null;
+  // Drafts, listings under review and moderated listings are never public.
+  if (!row || HIDDEN_STATUSES.includes(row.l.status)) return null;
+  const [owner] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(listings)
+    .where(and(eq(listings.id, row.l.id), sql`not (${ownerInGoodStanding})`));
+  if (owner.n > 0) return null;
 
   const [media, history, summary] = await Promise.all([
     db
@@ -128,6 +137,7 @@ export async function getSimilarListings(l: ListingDetail, limit = 8): Promise<L
         ne(listings.id, l.id),
         eq(listings.listingType, l.listingType),
         inArray(listings.status, ["active", "coming_soon"]),
+        ownerInGoodStanding,
         sql`${listings.price} between ${Math.round(l.price * 0.7)} and ${Math.round(l.price * 1.35)}`,
         sql`ST_DWithin(${properties.location}::geography, ST_SetSRID(ST_MakePoint(${l.longitude}, ${l.latitude}), 4326)::geography, 12000)`,
       ),

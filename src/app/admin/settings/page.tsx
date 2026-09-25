@@ -3,6 +3,7 @@ import { listFeaturesAdmin } from "@/server/admin/queries";
 import { requireAdmin } from "@/server/auth/session";
 import { AISettingsForm, GeneralSettingsForm, MonetizationForm } from "@/components/admin/forms";
 import { FilterTabs, PageHeader, Panel } from "@/components/admin/ui";
+import { TrustSettingsForm } from "@/components/admin/trust-forms";
 import { str, type SP } from "@/lib/params";
 
 export const metadata = { title: "Settings" };
@@ -11,6 +12,7 @@ const TABS = [
   { value: "general", label: "General" },
   { value: "monetization", label: "Monetization" },
   { value: "ai", label: "AI" },
+  { value: "trust", label: "Trust & verification" },
 ] as const;
 
 export default async function SettingsPage(props: PageProps<"/admin/settings">) {
@@ -36,6 +38,13 @@ export default async function SettingsPage(props: PageProps<"/admin/settings">) 
           </Panel>
         ) : tab === "monetization" ? (
           <MonetizationPanel />
+        ) : tab === "trust" ? (
+          <Panel
+            title="Trust & verification"
+            description="Who may publish, verification rules, new-account limits and the strike ladder."
+          >
+            <TrustSettingsForm s={await getSettings("trust")} />
+          </Panel>
         ) : (
           <Panel
             title="AI features"

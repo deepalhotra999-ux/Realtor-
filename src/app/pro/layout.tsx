@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { requirePro } from "@/server/auth/session";
+import { requireWorkspace } from "@/server/auth/session";
 import { canUseProAccount } from "@/server/entitlements";
 import { unreadConversationCount } from "@/server/messages";
 import { logoutAction } from "@/server/auth/actions";
@@ -14,9 +14,11 @@ export const metadata: Metadata = {
 };
 
 export default async function ProLayout({ children }: { children: React.ReactNode }) {
-  const user = await requirePro();
+  const user = await requireWorkspace();
+  // Private sellers (consumers) get a slimmer workspace and never need a pro plan.
+  const seller = user.role === "consumer";
   const [allowed, unread] = await Promise.all([
-    user.role === "admin" ? true : canUseProAccount(user.id),
+    user.role === "admin" || seller ? true : canUseProAccount(user.id),
     unreadConversationCount(user.id),
   ]);
   const groups: NavGroup[] = [
@@ -27,21 +29,28 @@ export default async function ProLayout({ children }: { children: React.ReactNod
         { href: "/pro/leads", label: "Leads", icon: "inbox" },
         { href: "/pro/tours", label: "Tours", icon: "calendar" },
         { href: "/messages", label: "Messages", icon: "message", badge: unread },
-        { href: "/pro/analytics", label: "Analytics", icon: "analytics" },
+        ...(seller
+          ? []
+          : [{ href: "/pro/analytics", label: "Analytics", icon: "analytics" as const }]),
       ],
     },
     {
       title: "Account",
       items: [
-        { href: "/pro/profile", label: "Agent profile", icon: "users" },
-        { href: "/billing", label: "Plan & billing", icon: "card" },
+        { href: "/account/verification", label: "Verification", icon: "key" },
+        ...(seller
+          ? []
+          : [
+              { href: "/pro/profile", label: "Agent profile", icon: "users" as const },
+              { href: "/billing", label: "Plan & billing", icon: "card" as const },
+            ]),
         { href: "/notifications", label: "Notifications", icon: "bell" },
       ],
     },
   ];
   return (
     <DashboardShell
-      title="Pro"
+      title={seller ? "Seller" : "Pro"}
       root="/pro"
       groups={groups}
       footer={

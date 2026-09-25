@@ -22,9 +22,22 @@ import { getSettings } from "@/server/settings";
 import { notify } from "@/server/notify";
 import { trackEvent } from "@/server/listings";
 import { refreshAgentRating } from "@/server/agents";
+import { assertCanContact, assertCanReview, TrustError } from "@/server/trust/permissions";
+import { AccountRestrictedError } from "@/server/trust/enforcement";
 import { parseSearchParams } from "@/lib/search/query";
 
 export type FormState = { ok?: boolean; error?: string; message?: string } | undefined;
+
+/** Run a trust check; return its user-facing message instead of throwing. */
+async function trustBlock(check: () => Promise<unknown>): Promise<string | null> {
+  try {
+    await check();
+    return null;
+  } catch (err) {
+    if (err instanceof TrustError || err instanceof AccountRestrictedError) return err.message;
+    throw err;
+  }
+}
 
 /* ── Favorites ───────────────────────────────────────────────────────────── */
 
@@ -94,6 +107,8 @@ export async function contactAgentAction(_prev: FormState, form: FormData): Prom
   if (!listing || !ownerId) return { error: "This listing isn't accepting messages right now." };
 
   const user = await getCurrentUser();
+  const blocked = user ? await trustBlock(() => assertCanContact(user.id, data.message)) : null;
+  if (blocked) return { error: blocked };
   const db = getDb();
   const [lead] = await db
     .insert(leads)
@@ -169,6 +184,8 @@ export async function requestTourAction(_prev: FormState, form: FormData): Promi
   const agentId = listing?.agentId ?? listing?.ownerId;
   if (!listing || !agentId) return { error: "Tours aren't available for this listing." };
   const user = await getCurrentUser();
+  const blocked = user ? await trustBlock(() => assertCanContact(user.id, d.notes ?? "")) : null;
+  if (blocked) return { error: blocked };
   const db = getDb();
   const [lead] = await db
     .insert(leads)
@@ -285,6 +302,8 @@ export async function submitReviewAction(_prev: FormState, form: FormData): Prom
   );
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
   if (parsed.data.agentId === user.id) return { error: "You can't review yourself." };
+  const blocked = await trustBlock(() => assertCanReview(user.id));
+  if (blocked) return { error: blocked };
   const general = await getSettings("general");
   const db = getDb();
   const status = general.requireReviewApproval ? "pending" : "published";
@@ -323,6 +342,8 @@ export async function contactAgentProfileAction(
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
   const d = parsed.data;
   const user = await getCurrentUser();
+  const blocked = user ? await trustBlock(() => assertCanContact(user.id, d.message)) : null;
+  if (blocked) return { error: blocked };
   const db = getDb();
   const [lead] = await db
     .insert(leads)

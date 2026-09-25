@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireAdmin } from "@/server/auth/session";
 import { getModerationCounts } from "@/server/admin/queries";
+import { pendingVerificationCount } from "@/server/trust/admin-queries";
 import { DashboardShell, type NavGroup } from "@/components/admin/shell";
 import { Avatar } from "@/components/ui/misc";
 import { logoutAction } from "@/server/auth/actions";
@@ -13,7 +14,10 @@ export const metadata: Metadata = {
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await requireAdmin();
-  const counts = await getModerationCounts();
+  const [counts, pendingChecks] = await Promise.all([
+    getModerationCounts(),
+    pendingVerificationCount(),
+  ]);
   const groups: NavGroup[] = [
     {
       items: [
@@ -33,6 +37,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     {
       title: "Trust & safety",
       items: [
+        {
+          href: "/admin/verifications",
+          label: "Verification queue",
+          icon: "checklist",
+          badge: pendingChecks,
+        },
         { href: "/admin/reviews", label: "Reviews", icon: "star", badge: counts.reviews },
         { href: "/admin/reports", label: "Reports", icon: "alert", badge: counts.reports },
         { href: "/admin/audit", label: "Audit log", icon: "scroll" },

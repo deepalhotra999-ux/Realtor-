@@ -12,7 +12,9 @@ import {
   listings,
   messages,
 } from "@/server/db/schema";
-import { requirePro, requireUser } from "@/server/auth/session";
+import { requireUser, requireWorkspace } from "@/server/auth/session";
+import { assertCanMessage, TrustError } from "@/server/trust/permissions";
+import { AccountRestrictedError } from "@/server/trust/enforcement";
 import { markConversationRead } from "@/server/messages";
 import { notify } from "@/server/notify";
 
@@ -27,6 +29,13 @@ export async function sendMessageAction(
   const id = z.string().uuid().parse(conversationId);
   const body = z.string().trim().min(1).max(4000).safeParse(form.get("body"));
   if (!body.success) return { error: "Write a message first." };
+  try {
+    await assertCanMessage(user.id, body.data);
+  } catch (err) {
+    if (err instanceof TrustError || err instanceof AccountRestrictedError)
+      return { error: err.message };
+    throw err;
+  }
   const db = getDb();
   const members = await db
     .select({
@@ -69,7 +78,8 @@ export async function sendMessageAction(
 
 /** Agent → lead: open (or reuse) a conversation with a lead who has an account. */
 export async function messageLeadAction(leadId: string) {
-  const user = await requirePro();
+  const user = await requireWorkspace();
+  await assertCanMessage(user.id, "");
   const db = getDb();
   const [lead] = await db
     .select({
