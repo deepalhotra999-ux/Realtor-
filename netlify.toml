@@ -1,0 +1,4 @@
+# Netlify Database applies these migrations automatically on every deploy
+# (production before publish, previews on their own database branch).
+[database.migrations]
+  path = "drizzle"
