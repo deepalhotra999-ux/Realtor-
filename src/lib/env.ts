@@ -20,6 +20,8 @@ const envSchema = z.object({
 
   MAP_TILE_URL: z.string().default("https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
   MAP_TILE_ATTRIBUTION: z.string().default("&copy; OpenStreetMap contributors"),
+  /** Vector style for MapLibre GL. OpenFreeMap needs no API key. */
+  MAP_STYLE_URL: z.string().default("https://tiles.openfreemap.org/styles/liberty"),
   GEOCODING_PROVIDER: z.enum(["local", "nominatim"]).default("local"),
   NOMINATIM_URL: z.string().default("https://nominatim.openstreetmap.org"),
   NOMINATIM_USER_AGENT: z.string().default("Dwellwise/0.1 (self-hosted)"),

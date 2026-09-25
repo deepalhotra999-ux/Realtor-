@@ -82,7 +82,12 @@ export function getGeocoding(): GeocodingProvider {
 
 export function getMap(): MapProvider {
   const env = getEnv();
-  return (reg.map ??= new XyzTileMapProvider(env.MAP_TILE_URL, env.MAP_TILE_ATTRIBUTION));
+  return (reg.map ??= new XyzTileMapProvider(
+    env.MAP_TILE_URL,
+    env.MAP_TILE_ATTRIBUTION,
+    19,
+    env.MAP_STYLE_URL,
+  ));
 }
 
 export function getStorage(): StorageProvider {

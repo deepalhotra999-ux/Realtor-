@@ -6,7 +6,7 @@ function MapSkeleton() {
   return <div className="skeleton size-full" />;
 }
 
-/** Leaflet touches `window`, so maps are client-only. */
+/** MapLibre GL touches `window`, so maps are client-only. */
 export const SearchMap = dynamic(() => import("./search-map"), {
   ssr: false,
   loading: MapSkeleton,

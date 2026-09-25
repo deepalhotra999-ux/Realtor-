@@ -1,25 +1,16 @@
 "use client";
 
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
+import "maplibre-gl/dist/maplibre-gl.css";
+import * as maplibregl from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
-import {
-  Circle,
-  MapContainer,
-  Marker,
-  Polyline,
-  TileLayer,
-  useMap,
-} from "react-leaflet";
 import { Loader2, Navigation, Route as RouteIcon, X } from "lucide-react";
 import type { MapConfig } from "@/providers/map/types";
 import { directionsUrl } from "@/lib/map-pricing";
+import { circlePolygon, createMaplibreMap, removeLineLayer, setLineLayer } from "./maplibre";
 
-const icon = L.divIcon({
-  className: "dw-pin",
-  html: `<div style="transform:translate(-50%,-100%)"><svg width="34" height="42" viewBox="0 0 34 42"><path d="M17 41s15-13.6 15-24A15 15 0 0 0 2 17c0 10.4 15 24 15 24z" fill="#0f5c4c" stroke="#fff" stroke-width="2"/><circle cx="17" cy="17" r="6" fill="#fff"/></svg></div>`,
-  iconSize: [0, 0],
-});
+const HOUSE_PIN_SVG = `<div class="dw-marker"><svg width="34" height="42" viewBox="0 0 34 42"><path d="M17 41s15-13.6 15-24A15 15 0 0 0 2 17c0 10.4 15 24 15 24z" fill="#0f5c4c" stroke="#fff" stroke-width="2"/><circle cx="17" cy="17" r="6" fill="#fff"/></svg></div>`;
+
+const ROUTE_LAYER_ID = "dw-route";
 
 interface RouteInfo {
   line: [number, number][];
@@ -28,17 +19,6 @@ interface RouteInfo {
 }
 
 type RouteState = "idle" | "locating" | "loading" | "error";
-
-function FitRoute({ line }: { line: [number, number][] | null }) {
-  const map = useMap();
-  const prev = useRef<[number, number][] | null>(null);
-  useEffect(() => {
-    if (!line || prev.current === line) return;
-    prev.current = line;
-    map.fitBounds(L.latLngBounds(line), { padding: [48, 48], animate: true });
-  }, [map, line]);
-  return null;
-}
 
 async function fetchRoute(
   fromLat: number,
@@ -75,8 +55,70 @@ export default function LocationMap({
   /** Show the "route from my location" navigation control. */
   directions?: boolean;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
   const [route, setRoute] = useState<RouteInfo | null>(null);
   const [state, setState] = useState<RouteState>("idle");
+
+  // Initialise the map once.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const map = createMaplibreMap(container, config, { lng, lat, zoom: 15 });
+    mapRef.current = map;
+    map.scrollZoom.disable();
+
+    if (approximate) {
+      const addCircle = () => {
+        if (map.getSource("dw-approx")) return;
+        map.addSource("dw-approx", {
+          type: "geojson",
+          data: {
+            type: "FeatureCollection",
+            features: [{ type: "Feature", geometry: circlePolygon(lng, lat, 250), properties: {} }],
+          },
+        });
+        map.addLayer({
+          id: "dw-approx",
+          type: "fill",
+          source: "dw-approx",
+          paint: { "fill-color": "#0f5c4c", "fill-opacity": 0.12 },
+        });
+      };
+      if (map.isStyleLoaded()) addCircle();
+      else map.once("load", addCircle);
+    } else {
+      const el = document.createElement("div");
+      el.innerHTML = HOUSE_PIN_SVG;
+      new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([lng, lat]).addTo(map);
+    }
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Draw / clear the driving route.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!route) {
+      removeLineLayer(map, ROUTE_LAYER_ID);
+      return;
+    }
+    setLineLayer(
+      map,
+      ROUTE_LAYER_ID,
+      [route.line.map(([la, lo]) => [lo, la])],
+      { "line-color": "#0f5c4c", "line-width": 5, "line-opacity": 0.85 },
+    );
+    const bounds = new maplibregl.LngLatBounds();
+    for (const [la, lo] of route.line) bounds.extend([lo, la]);
+    bounds.extend([lng, lat]);
+    map.fitBounds(bounds, { padding: 48, animate: true });
+  }, [route, lat, lng]);
 
   const showRoute = () => {
     if (!("geolocation" in navigator)) {
@@ -109,26 +151,10 @@ export default function LocationMap({
   const busy = state === "locating" || state === "loading";
 
   return (
-    <MapContainer center={[lat, lng]} zoom={15} scrollWheelZoom={false} className="size-full">
-      <TileLayer url={config.tileUrl} attribution={config.attribution} maxZoom={config.maxZoom} />
-      {approximate ? (
-        <Circle
-          center={[lat, lng]}
-          radius={250}
-          pathOptions={{ color: "#0f5c4c", fillOpacity: 0.12 }}
-        />
-      ) : (
-        <Marker position={[lat, lng]} icon={icon} />
-      )}
-      {route ? (
-        <Polyline
-          positions={route.line}
-          pathOptions={{ color: "#0f5c4c", weight: 5, opacity: 0.85 }}
-        />
-      ) : null}
-      <FitRoute line={route?.line ?? null} />
+    <div className="relative size-full overflow-hidden">
+      <div ref={containerRef} className="size-full" role="application" aria-label="Property location map" />
       {directions && !approximate ? (
-        <div className="absolute right-3 bottom-3 z-[500] flex flex-col items-end gap-2">
+        <div className="absolute right-3 bottom-3 z-10 flex flex-col items-end gap-2">
           {route ? (
             <div className="bg-surface/95 shadow-card flex items-center gap-2 rounded-full py-2 pr-2 pl-4 backdrop-blur">
               <RouteIcon className="text-brand-600 size-4" />
@@ -180,6 +206,6 @@ export default function LocationMap({
           )}
         </div>
       ) : null}
-    </MapContainer>
+    </div>
   );
 }

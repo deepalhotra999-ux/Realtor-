@@ -217,33 +217,103 @@
   background-size: 800px 100%;
 }
 
-[data-theme="dark"] .leaflet-container {
+[data-theme="dark"] .maplibregl-map {
   background: #1b2320;
 }
-[data-theme="dark"] .leaflet-control-attribution {
+[data-theme="dark"] .maplibregl-ctrl-attrib {
   background: rgb(25 34 31 / 0.85) !important;
   color: var(--color-muted);
 }
+[data-theme="dark"] .dw-popup .maplibregl-popup-content {
+  background: #222c28;
+}
 
-/* Leaflet overrides — calmer, on-brand map chrome */
-.leaflet-container {
+/* MapLibre overrides — calmer, on-brand map chrome */
+.maplibregl-map {
   font-family: var(--font-sans);
   background: #e9e6df;
 }
-.leaflet-control-attribution {
+.maplibregl-ctrl-attrib {
   font-size: 10px;
   background: rgb(255 255 255 / 0.8) !important;
 }
-.leaflet-bar {
+.maplibregl-ctrl-group {
   border: none !important;
   box-shadow: var(--shadow-card) !important;
   border-radius: 12px !important;
   overflow: hidden;
 }
-.leaflet-bar a {
-  color: var(--color-ink) !important;
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid rgb(0 0 0 / 0.06) !important;
 }
-.dw-pin {
+
+/* Price-pill markers rendered as marker element HTML */
+.dw-marker {
   background: transparent;
   border: none;
+}
+.dw-pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  white-space: nowrap;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: #fff;
+  font: 600 12px/1.4 var(--font-sans);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.22);
+  border: 1px solid rgb(0 0 0 / 0.08);
+  cursor: pointer;
+}
+.dw-pill[data-active="true"] {
+  scale: 1.12;
+}
+.dw-pill-sub {
+  font: 500 10px/1.2 var(--font-sans);
+  opacity: 0.85;
+}
+.dw-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+}
+
+/* MapLibre popup content */
+.dw-popup .maplibregl-popup-content {
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-family: var(--font-sans);
+  box-shadow: var(--shadow-card);
+}
+.dw-popup .maplibregl-popup-tip {
+  border-top-color: #fff;
+}
+.dw-popup-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink);
+  text-decoration: none;
+}
+.dw-popup-meta {
+  font-size: 12px;
+  color: var(--color-muted);
+  margin-top: 2px;
+}
+.dw-popup-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+.dw-popup-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-brand-600);
+  text-decoration: none;
+}
+.dw-popup-link:hover {
+  text-decoration: underline;
 }
