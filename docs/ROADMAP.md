@@ -29,16 +29,15 @@ Each phase ends with `pnpm check` (typecheck, lint, tests, production build) pas
 - AI Home Finder: conversational preferences → transparent match scores with reasons and trade-offs
 - Seller page with a comps-based value estimator that shows its comparables
 
-## Phase 3 — Admin panel (in progress)
+## Phase 3 — Admin panel ✅
 
-Done: shell/nav (`src/components/admin/shell.tsx`), overview dashboard (`/admin`), users (`/admin/users`),
-agents/brokerages (`/admin/agents`), listings (`/admin/listings`), leads (`/admin/leads`), reviews
-moderation (`/admin/reviews`), trust & safety reports (`/admin/reports`), audit log (`/admin/audit`), the
-`proxy.ts` optimistic auth redirect for `/admin`, `/pro`, etc., a "Report listing" user-facing action feeding
-the reports queue, and server actions for all of the above (role/status changes, listing status/featured,
-review/report moderation) in `src/server/actions/admin.ts`. Settings/plans/flags **forms** are written in
-`src/components/admin/forms.tsx` (GeneralSettingsForm, MonetizationForm, AISettingsForm, AIPlayground,
-TestEmailForm, FlagForm, PlanForm, FeatureForm, GrantPlanForm) but their **pages are not wired up yet**.
+- Shell/nav, overview dashboard, users, agents/brokerages, listings (incl. approving drafts), leads,
+  review moderation, trust & safety reports, audit log, `proxy.ts` optimistic auth redirects
+- Settings (`/admin/settings`: General · Monetization · AI tabs), plans & feature catalogue
+  (`/admin/plans`), subscriptions & trials (`/admin/subscriptions`: grant, extend trial, cancel, payments),
+  feature flags (`/admin/flags`), AI (`/admin/ai`: stats, switches, playground), notifications outbox
+  (`/admin/notifications`: test email), analytics (`/admin/analytics`: 7/30/90-day views, inquiries,
+  funnel, top listings, searched cities)
 
 **Correlated-subquery column bug — fixed.** Root cause (verified in `drizzle-orm/pg-core/dialect.js`
 `buildSelection`): in a select with **no joins** (`isSingleTable`), Drizzle renders every column
@@ -52,18 +51,29 @@ previously (`listAgentsAdmin()` agent rows, `listListingsAdmin()`, `agents.ts`, 
 `listReportsAdmin()`) are all joined queries or WHERE clauses and were checked via `.toSQL()` — no change
 needed. Rule of thumb: in a join-less `.select({...})`, never interpolate a column inside a subquery.
 
-**Next up after that fix:** wire the existing forms into pages — `/admin/settings` (General +
-Monetization + AI tabs), `/admin/plans` (plans/features/entitlements, using `PlanForm`/`FeatureForm`),
-`/admin/subscriptions` (using `GrantPlanForm`, `cancelSubscriptionAdminAction`, `extendTrialAction` —
-actions already exist in `server/actions/admin.ts`), `/admin/flags` (using `FlagForm`), `/admin/ai`
-(using `AIPlayground`, `TestEmailForm`, plus `getAIStats()` which is already written in
-`server/admin/queries.ts`), `/admin/notifications` (using `listOutbound()`, already written), and
-`/admin/analytics` (using `getAnalytics()`, already written).
+## Phase 4 — Pro workspace ✅
 
-## Phase 4 — Pro workspace
+- `/pro` shell (agents, brokers, property managers, admins); gated by `canUseProAccount()` when
+  subscriptions are ON and free agent accounts are OFF
+- Overview: live listings, 30-day views/leads, follow-ups due, upcoming tours, pipeline
+- Listings: create/edit (geocodes the address, falls back to manual coordinates), draft → publish
+  (honours "Require listing approval" and the `listings.active` limit), status changes with price-history
+  events, featured toggle (`listings.featured`), photo upload/reorder/delete via `StorageProvider`
+- AI listing writer: deterministic draft from facts (`src/lib/ai/listing-writer.ts`), optional model polish
+  rejected if it introduces any number not in the facts (`src/lib/ai/grounding.ts`)
+- Lead CRM (`crm.access`): pipeline board + list, stage changes with automatic follow-up dates
+  (`src/lib/crm.ts`), notes/calls/tasks, email a lead through the platform, AI follow-up drafts
+  (`ai.agent_assistant`), message leads who have an account
+- Tours (`tours.scheduling`): agenda, confirm/cancel (requester notified), completed/no-show logged to the lead
+- Messaging (`/messages`, all users): inbox, threads with polling refresh, unread badges, notifications
+  that fire once per burst
+- Analytics (`analytics.advanced`): per-listing views/saves/inquiries, daily trends, lead sources, conversion
+- Billing: `/pricing` (plans by audience, monthly/annual), `/billing` (plan, usage meters, cancel/resume,
+  payment history), `/billing/checkout` (mock provider: simulate success/decline). One trial per account;
+  double-submitted checkouts don't create duplicate subscriptions
 
-Listing management (with AI description writer), lead CRM pipeline, messaging, tour scheduling, analytics,
-billing through the PaymentProvider.
+Not built (intentionally): renewal charging/dunning — the mock provider never moves money, so there is
+nothing to renew. A real adapter would drive renewals via its webhooks.
 
 ## Phase 5 — Engagement
 

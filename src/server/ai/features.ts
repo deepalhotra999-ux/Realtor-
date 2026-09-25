@@ -7,6 +7,11 @@ import { compareListings } from "@/lib/ai/compare";
 import { rankListings, type MatchResult, type Preferences } from "@/lib/ai/match";
 import { DEFAULT_QUERY, type BBox, type SearchQuery } from "@/lib/search/query";
 import type { ListingDetail, ListingSummary } from "@/lib/listing-types";
+import { draftListingDescription, type WriterFacts } from "@/lib/ai/listing-writer";
+import { numbersGrounded } from "@/lib/ai/grounding";
+import { draftFollowUp, type FollowUpLead } from "@/lib/crm";
+import { FEATURES } from "@/lib/entitlements/catalog";
+import { assertCan } from "@/server/entitlements";
 import { getGeocoding, getSearch } from "@/providers";
 import { extractJson, runAI } from "./run";
 
@@ -133,6 +138,62 @@ export async function summarizeComparison(items: ListingSummary[], userId: strin
       { maxTokens: 180 },
     );
     return { ...computed, narrative: out, provider: out ? provider.name : "rules" };
+  });
+}
+
+/* ── Listing description writer (pro) ────────────────────────────────────── */
+
+export async function writeListingDescription(facts: WriterFacts, userId: string) {
+  await assertCan(userId, FEATURES.AI_LISTING_WRITER);
+  return runAI("listingDescriptions", userId, async ({ llm, provider }) => {
+    const draft = draftListingDescription(facts);
+    const factsJson = JSON.stringify(facts);
+    const out = await llm(
+      [
+        {
+          role: "system",
+          content: `${GROUNDING_RULES.replace("at most 3 sentences", "at most 6 sentences")}
+Rewrite the DRAFT listing description so it reads warmly and professionally, in one or two short paragraphs.
+Use ONLY the FACTS and the DRAFT. Do not add schools, commute times, neighborhood character, or any number not given. Never describe who the home is "perfect for".`,
+        },
+        { role: "user", content: `FACTS: ${factsJson}\n\nDRAFT: ${draft}` },
+      ],
+      { maxTokens: 350 },
+    );
+    const usable = out && out.length < 2000 && numbersGrounded(out, `${factsJson} ${draft}`);
+    return {
+      text: usable ? out : draft,
+      provider: usable ? provider.name : "rules",
+    };
+  });
+}
+
+/* ── Agent assistant: follow-up drafts (pro) ─────────────────────────────── */
+
+export async function draftLeadFollowUp(lead: FollowUpLead, agentName: string, userId: string) {
+  await assertCan(userId, FEATURES.AI_AGENT_ASSISTANT);
+  return runAI("agentAssistant", userId, async ({ llm, provider }) => {
+    const draft = draftFollowUp(lead, agentName);
+    const out = await llm(
+      [
+        {
+          role: "system",
+          content: `You help a real-estate agent write short, friendly follow-up emails.
+Rules: use only the LEAD facts and DRAFT; never promise prices, availability, or outcomes; no pressure tactics; keep it under 120 words; keep the greeting and the sign-off name exactly.`,
+        },
+        {
+          role: "user",
+          content: `LEAD: ${JSON.stringify({ ...lead, lastContactAt: lead.lastContactAt?.toISOString() ?? null })}\n\nDRAFT:\n${draft}`,
+        },
+      ],
+      { maxTokens: 260 },
+    );
+    const usable =
+      out &&
+      out.length < 1500 &&
+      out.includes(agentName) &&
+      numbersGrounded(out, `${JSON.stringify(lead)} ${draft}`);
+    return { text: usable ? out : draft, provider: usable ? provider.name : "rules" };
   });
 }
 

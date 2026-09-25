@@ -4,6 +4,7 @@ import { getDb } from "@/server/db";
 import { notifications, outboundMessages, users } from "@/server/db/schema";
 import { getEmail, getSms } from "@/providers";
 import { getEnv } from "@/lib/env";
+import { parseNotificationPrefs, wantsNotification } from "@/lib/notification-prefs";
 
 function escapeHtml(s: string) {
   return s.replace(
@@ -68,26 +69,30 @@ export async function sendSms(to: string, body: string) {
   return result;
 }
 
-/** In-app notification, optionally mirrored to email. */
+/**
+ * In-app notification, optionally mirrored to email. Both channels honour the
+ * recipient's preferences (`users.preferences.notifications`).
+ */
 export async function notify(
   userId: string,
   n: { type: string; title: string; body?: string; link?: string },
   opts: { email?: boolean } = {},
 ) {
   const db = getDb();
-  await db.insert(notifications).values({ userId, ...n });
-  if (opts.email) {
-    const [u] = await db
-      .select({ email: users.email })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-    if (u)
-      await sendEmail(
-        u.email,
-        n.title,
-        n.body ?? "",
-        n.link ? { label: "Open Dwellwise", href: n.link } : undefined,
-      );
-  }
+  const [u] = await db
+    .select({ email: users.email, preferences: users.preferences })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!u) return;
+  const prefs = parseNotificationPrefs(u.preferences?.notifications);
+  if (wantsNotification(prefs, n.type, "inApp"))
+    await db.insert(notifications).values({ userId, ...n });
+  if (opts.email && wantsNotification(prefs, n.type, "email"))
+    await sendEmail(
+      u.email,
+      n.title,
+      n.body ?? "",
+      n.link ? { label: "Open Dwellwise", href: n.link } : undefined,
+    );
 }
