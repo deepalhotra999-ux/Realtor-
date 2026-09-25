@@ -412,7 +412,7 @@ export async function getAIStats() {
     db.execute<{ day: string; n: number }>(sql`
       select to_char(d, 'YYYY-MM-DD') as day, coalesce(x.n, 0)::int as n
       from generate_series(current_date - 13, current_date, interval '1 day') d
-      left join (select date_trunc('day', created_at) day, count(*) n from ai_requests where created_at > current_date - 14 group by 1) x on x.day = d
+      left join (select date_trunc('day', created_at) as day, count(*) n from ai_requests where created_at > current_date - 14 group by 1) x on x.day = d
       order by d`),
   ]);
   return { byFeature: [...byFeature], recent, daily: [...daily] };
