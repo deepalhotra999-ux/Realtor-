@@ -359,6 +359,6 @@ export function renderDemoImage(type: string, seed: string, scene: Scene): strin
   if (scene === "exterior") body = exterior(r, type);
   else if (scene === "outdoor") body = outdoor(r);
   else body = room(r, scene);
-  const label = `<g opacity="0.75"><rect x="${W - 196}" y="${H - 52}" width="180" height="34" rx="17" fill="#15201c" opacity="0.55"/><text x="${W - 106}" y="${H - 30}" font-family="Inter, Arial, sans-serif" font-size="15" fill="#fff" text-anchor="middle">Illustration · demo</text></g>`;
+  const label = `<g opacity="0.75"><rect x="110" y="${H - 52}" width="180" height="34" rx="17" fill="#15201c" opacity="0.55"/><text x="200" y="${H - 30}" font-family="Inter, Arial, sans-serif" font-size="15" fill="#fff" text-anchor="middle">Illustration · demo</text></g>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice">${body}${label}</svg>`;
 }

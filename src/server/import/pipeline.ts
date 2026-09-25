@@ -138,17 +138,15 @@ export async function importRecord(
   }
   await db.delete(schema.priceHistory).where(eq(schema.priceHistory.listingId, listingId));
   if (r.priceHistory.length) {
-    await db
-      .insert(schema.priceHistory)
-      .values(
-        r.priceHistory.map((h) => ({
-          propertyId: property.id,
-          listingId,
-          event: h.event,
-          price: h.price,
-          occurredAt: h.occurredAt,
-        })),
-      );
+    await db.insert(schema.priceHistory).values(
+      r.priceHistory.map((h) => ({
+        propertyId: property.id,
+        listingId,
+        event: h.event,
+        price: h.price,
+        occurredAt: h.occurredAt,
+      })),
+    );
   }
   return { propertyId: property.id, listingId };
 }

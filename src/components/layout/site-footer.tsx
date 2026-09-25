@@ -34,7 +34,7 @@ const COLUMNS = [
 export function SiteFooter() {
   return (
     <footer className="border-line bg-surface mt-24 border-t">
-      <div className="mx-auto grid max-w-[1440px] gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+      <div className="mx-auto grid max-w-[1440px] grid-cols-1 gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_repeat(3,1fr)]">
         <div>
           <Logo />
           <p className="text-muted mt-4 max-w-xs text-sm leading-relaxed">

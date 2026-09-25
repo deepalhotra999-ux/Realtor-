@@ -442,25 +442,21 @@ async function main() {
           createdAt: created,
         })
         .returning();
-      await db
-        .insert(s.leadActivities)
-        .values({
+      await db.insert(s.leadActivities).values({
+        leadId: lead.id,
+        actorId: a.id,
+        type: "note",
+        body: "Lead created from inquiry.",
+        createdAt: created,
+      });
+      if (stage !== "new") {
+        await db.insert(s.leadActivities).values({
           leadId: lead.id,
           actorId: a.id,
-          type: "note",
-          body: "Lead created from inquiry.",
-          createdAt: created,
+          type: rng.pick(["call", "email", "sms"] as const),
+          body: "Introduced myself and shared similar listings.",
+          createdAt: new Date(created.getTime() + day),
         });
-      if (stage !== "new") {
-        await db
-          .insert(s.leadActivities)
-          .values({
-            leadId: lead.id,
-            actorId: a.id,
-            type: rng.pick(["call", "email", "sms"] as const),
-            body: "Introduced myself and shared similar listings.",
-            createdAt: new Date(created.getTime() + day),
-          });
       }
       if (["touring", "offer", "under_contract"].includes(stage) || rng.bool(0.2)) {
         await db.insert(s.tours).values({
@@ -550,18 +546,16 @@ async function main() {
       { itemId: item.id, userId: buyer.id, value: 1 },
       { itemId: item.id, userId: partner.id, value: rng.pick([1, -1]) },
     ]);
-    await db
-      .insert(s.boardComments)
-      .values({
-        itemId: item.id,
-        authorId: partner.id,
-        body: rng.pick([
-          "Love the kitchen!",
-          "A bit far from work for me.",
-          "Can we tour this Saturday?",
-          "Great yard for the dog.",
-        ]),
-      });
+    await db.insert(s.boardComments).values({
+      itemId: item.id,
+      authorId: partner.id,
+      body: rng.pick([
+        "Love the kitchen!",
+        "A bit far from work for me.",
+        "Can we tour this Saturday?",
+        "Great yard for the dog.",
+      ]),
+    });
   }
 
   console.log("› Notifications & analytics events …");

@@ -100,15 +100,13 @@ export async function registerAction(_prev: AuthState, form: FormData): Promise<
         parsed.data.role === "property_manager" ? "Property manager" : "Real estate professional",
     });
   }
-  await db
-    .insert(auditLogs)
-    .values({
-      actorId: user.id,
-      action: "user.register",
-      targetType: "user",
-      targetId: user.id,
-      meta: { role: user.role },
-    });
+  await db.insert(auditLogs).values({
+    actorId: user.id,
+    action: "user.register",
+    targetType: "user",
+    targetId: user.id,
+    meta: { role: user.role },
+  });
   await createSession(user.id);
   redirect(safeNext(form.get("next"), pro ? "/pro" : "/"));
 }

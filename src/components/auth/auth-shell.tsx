@@ -12,7 +12,7 @@ export function AuthShell({
   aside?: ReactNode;
 }) {
   return (
-    <div className="mx-auto grid max-w-[1200px] gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_1.05fr] lg:py-20">
+    <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_1.05fr] lg:py-20">
       <div className="mx-auto w-full max-w-md">
         <h1 className="font-display text-ink text-4xl">{title}</h1>
         <p className="text-muted mt-3">{subtitle}</p>

@@ -1,0 +1,75 @@
+import type { ListingDetail, ListingSummary } from "@/lib/listing-types";
+
+/** Test fixtures (fictional). */
+export function summary(patch: Partial<ListingSummary> = {}): ListingSummary {
+  return {
+    id: "l1",
+    slug: "l1",
+    title: "Test home",
+    listingType: "sale",
+    status: "active",
+    price: 500_000,
+    currency: "USD",
+    isFeatured: false,
+    listedAt: "2026-05-01T00:00:00Z",
+    propertyType: "single_family",
+    street: "12 Oak St",
+    unit: null,
+    city: "Austin",
+    state: "TX",
+    postalCode: "78704",
+    neighborhood: "Zilker",
+    latitude: 30.2622,
+    longitude: -97.773,
+    beds: 3,
+    baths: 2,
+    sqft: 1800,
+    lotSqft: 6000,
+    yearBuilt: 1998,
+    hoaMonthly: null,
+    features: ["garage", "fireplace"],
+    photoUrl: null,
+    photoCount: 0,
+    agentName: null,
+    brokerageName: null,
+    nextOpenHouse: null,
+    priceCut: null,
+    ...patch,
+  };
+}
+
+export function detail(patch: Partial<ListingDetail> = {}): ListingDetail {
+  return {
+    ...summary(),
+    propertyId: "p1",
+    description: "A test home.",
+    county: "Travis",
+    stories: 2,
+    garageSpaces: 2,
+    taxAnnual: 9600,
+    facts: {
+      heating: "Heat pump",
+      cooling: "Central air",
+      parking: "2-car garage",
+      schoolDistrict: "Austin Unified (demo)",
+    },
+    closedAt: null,
+    closePrice: null,
+    availableFrom: null,
+    leaseTermMonths: null,
+    deposit: null,
+    petsAllowed: null,
+    furnished: null,
+    openHouses: [],
+    viewCount: 0,
+    saveCount: 0,
+    media: [],
+    priceHistory: [
+      { event: "listed", price: 525_000, occurredAt: "2026-05-01T00:00:00Z" },
+      { event: "price_change", price: 500_000, occurredAt: "2026-05-15T00:00:00Z" },
+    ],
+    agent: null,
+    source: "seed",
+    ...patch,
+  };
+}
