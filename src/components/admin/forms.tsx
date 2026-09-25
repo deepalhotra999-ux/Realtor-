@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { CheckCircle2, TriangleAlert } from "lucide-react";
 import {
   grantPlanAction,
+  runAlertsNowAction,
   saveAISettingsAction,
   saveFeatureAction,
   saveFlagAction,
@@ -375,6 +376,18 @@ export function TestEmailForm({ defaultTo }: { defaultTo: string }) {
       <div className="w-full">
         <Status state={state} />
       </div>
+    </form>
+  );
+}
+
+export function RunAlertsForm() {
+  const [state, action, pending] = useActionState(runAlertsNowAction, undefined);
+  return (
+    <form action={action} className="space-y-3">
+      <Button type="submit" variant="secondary" disabled={pending}>
+        {pending ? "Running…" : "Run saved-search alerts now"}
+      </Button>
+      <Status state={state} />
     </form>
   );
 }

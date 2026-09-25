@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Heart, Sparkles } from "lucide-react";
+import { Bell, Heart, Sparkles } from "lucide-react";
 import { getCurrentUser } from "@/server/auth/session";
+import { unreadNotificationCount } from "@/server/notify";
 import { Logo } from "@/components/ui/misc";
 import { ButtonLink } from "@/components/ui/button";
 import { MAIN_NAV } from "./nav-links";
@@ -9,6 +10,7 @@ import { MobileNav } from "./mobile-nav";
 
 export async function SiteHeader() {
   const user = await getCurrentUser();
+  const unread = user ? await unreadNotificationCount(user.id) : 0;
   return (
     <header className="border-line/80 bg-paper/85 sticky top-0 z-40 border-b backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-6 px-4 sm:px-6">
@@ -40,6 +42,20 @@ export async function SiteHeader() {
           >
             <Heart className="size-5" />
           </Link>
+          {user ? (
+            <Link
+              href="/notifications"
+              className="text-ink-2 hover:bg-ink/5 hover:text-ink relative inline-flex size-10 items-center justify-center rounded-full transition"
+              aria-label={unread ? `Notifications (${unread} unread)` : "Notifications"}
+            >
+              <Bell className="size-5" />
+              {unread ? (
+                <span className="bg-clay-500 absolute top-1 right-1 min-w-4 rounded-full px-1 text-center text-[10px] leading-4 font-semibold text-white">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              ) : null}
+            </Link>
+          ) : null}
           {user ? (
             <UserMenu
               user={{

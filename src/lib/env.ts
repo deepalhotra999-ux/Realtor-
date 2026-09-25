@@ -49,6 +49,9 @@ const envSchema = z.object({
   RESO_ACCESS_TOKEN: z.string().optional(),
 
   PAYMENT_PROVIDER: z.enum(["mock"]).default("mock"),
+
+  /** Bearer token for /api/jobs/* (cron). Unset = job endpoints disabled outside development. */
+  JOBS_SECRET: z.string().min(16).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

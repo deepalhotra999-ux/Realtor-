@@ -1,7 +1,7 @@
 import { listOutbound, PAGE_SIZE } from "@/server/admin/queries";
 import { requireAdmin } from "@/server/auth/session";
 import { describeProviders } from "@/providers";
-import { TestEmailForm } from "@/components/admin/forms";
+import { RunAlertsForm, TestEmailForm } from "@/components/admin/forms";
 import { FilterTabs, PageHeader, Pagination, Panel, Pill, StatusPill } from "@/components/admin/ui";
 import { formatDate } from "@/lib/format";
 import { page as getPage, str, withParams, type SP } from "@/lib/params";
@@ -86,6 +86,18 @@ export default async function NotificationsAdminPage(props: PageProps<"/admin/no
             description="With the outbox provider, mail is recorded here instead of sent."
           >
             <TestEmailForm defaultTo={admin.email} />
+          </Panel>
+          <Panel
+            title="Saved-search alerts"
+            description={
+              <>
+                Schedule <code>POST /api/jobs/alerts</code> every 10–15 minutes with{" "}
+                <code>Authorization: Bearer $JOBS_SECRET</code>. Each search is only processed when
+                its frequency is due.
+              </>
+            }
+          >
+            <RunAlertsForm />
           </Panel>
         </div>
       </div>

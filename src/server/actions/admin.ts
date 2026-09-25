@@ -21,6 +21,7 @@ import {
 import { requireAdmin } from "@/server/auth/session";
 import { invalidateFlagCache, updateSettings } from "@/server/settings";
 import { sendEmail } from "@/server/notify";
+import { runSavedSearchAlerts } from "@/server/jobs/alerts";
 import { refreshAgentRating } from "@/server/actions/marketplace";
 import { getAI } from "@/providers";
 import {
@@ -276,6 +277,17 @@ export async function sendTestEmailAction(
   return res.status === "failed"
     ? { error: `Delivery failed: ${"error" in res ? res.error : "unknown error"}` }
     : { ok: true, message: `Test email sent to ${to.data}.` };
+}
+
+export async function runAlertsNowAction(): Promise<AdminFormState> {
+  const admin = await requireAdmin();
+  const r = await runSavedSearchAlerts();
+  await audit(admin.id, "jobs.alerts.run", "job", "alerts", { ...r });
+  revalidatePath("/admin/notifications");
+  return {
+    ok: r.errors === 0,
+    message: `Checked ${r.checked} saved searches: ${r.due} due, ${r.notified} alerted (${r.listings} new listings)${r.errors ? `, ${r.errors} failed` : ""}.`,
+  };
 }
 
 /* ── Feature flags ───────────────────────────────────────────────────────── */

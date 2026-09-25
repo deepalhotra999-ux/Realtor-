@@ -22,5 +22,6 @@ export const config = {
     "/notifications/:path*",
     "/boards/:path*",
     "/billing/:path*",
+    "/for-you",
   ],
 };

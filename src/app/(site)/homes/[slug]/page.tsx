@@ -49,6 +49,8 @@ import { ListingCard, listingBadges } from "@/components/listing/listing-card";
 import { LocationMap } from "@/components/map";
 import { ShareButton } from "@/components/property/share-button";
 import { ReportButton } from "@/components/property/report-button";
+import { SaveToBoard } from "@/components/boards/board-controls";
+import { boardsForListing } from "@/server/boards";
 
 export async function generateMetadata(props: PageProps<"/homes/[slug]">): Promise<Metadata> {
   const { slug } = await props.params;
@@ -77,7 +79,11 @@ export default async function ListingPage(props: PageProps<"/homes/[slug]">) {
   if (!listing) notFound();
   const l = listing;
 
-  const [similar, favs] = await Promise.all([getSimilarListings(l, 8), getFavoriteIds(user?.id)]);
+  const [similar, favs, myBoards] = await Promise.all([
+    getSimilarListings(l, 8),
+    getFavoriteIds(user?.id),
+    user ? boardsForListing(user.id, l.id) : [],
+  ]);
   const anon = (await headers()).get("x-forwarded-for")?.split(",")[0] ?? null;
   trackEvent({ type: "listing_view", userId: user?.id, listingId: l.id, anonymousId: anon });
 
@@ -216,6 +222,7 @@ export default async function ListingPage(props: PageProps<"/homes/[slug]">) {
               <div className="flex gap-2">
                 <FavoriteButton listingId={l.id} initial={favs.has(l.id)} variant="button" />
                 <CompareToggle listingId={l.id} variant="button" />
+                <SaveToBoard listingId={l.id} boards={myBoards} signedIn={Boolean(user)} />
                 <ShareButton title={l.title} />
               </div>
             </div>

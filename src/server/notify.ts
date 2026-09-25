@@ -1,5 +1,5 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import { notifications, outboundMessages, users } from "@/server/db/schema";
 import { getEmail, getSms } from "@/providers";
@@ -67,6 +67,18 @@ export async function sendSms(to: string, body: string) {
       error: result.error ?? null,
     });
   return result;
+}
+
+export async function unreadNotificationCount(userId: string): Promise<number> {
+  try {
+    const [row] = await getDb()
+      .select({ n: sql<number>`count(*)::int` })
+      .from(notifications)
+      .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
+    return row?.n ?? 0;
+  } catch {
+    return 0;
+  }
 }
 
 /**

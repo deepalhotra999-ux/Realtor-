@@ -5,12 +5,14 @@ import { useEffect, useRef, useState } from "react";
 import {
   Bell,
   Briefcase,
+  CreditCard,
   Heart,
   LayoutDashboard,
   LogOut,
   MessageSquare,
   Search,
   Shield,
+  Sparkles,
   Users,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/misc";
@@ -65,6 +67,9 @@ export function UserMenu({ user }: { user: MenuUser }) {
             <p className="text-muted truncate text-xs">{user.email}</p>
           </div>
           <div className="bg-line my-1 h-px" />
+          <Link href="/for-you" className={item}>
+            <Sparkles className="size-4" /> For you
+          </Link>
           <Link href="/favorites" className={item}>
             <Heart className="size-4" /> Saved homes
           </Link>
@@ -80,6 +85,11 @@ export function UserMenu({ user }: { user: MenuUser }) {
           <Link href="/notifications" className={item}>
             <Bell className="size-4" /> Notifications
           </Link>
+          {pro ? (
+            <Link href="/billing" className={item}>
+              <CreditCard className="size-4" /> Plan & billing
+            </Link>
+          ) : null}
           {pro ? (
             <>
               <div className="bg-line my-1 h-px" />
