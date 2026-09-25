@@ -7,10 +7,13 @@ import {
   auditLogs,
   brokerages,
   events,
+  featureFlags,
+  features,
   leads,
   listings,
   outboundMessages,
   payments,
+  planEntitlements,
   plans,
   properties,
   reports,
@@ -208,8 +211,10 @@ export async function listAgentsAdmin(opts: { q?: string; verified?: string; pag
         name: brokerages.name,
         city: brokerages.city,
         state: brokerages.state,
-        agents: sql<number>`(select count(*)::int from agent_profiles a where a.brokerage_id = ${brokerages.id})`,
-        listings: sql<number>`(select count(*)::int from listings l where l.brokerage_id = ${brokerages.id} and l.status in ('active','coming_soon'))`,
+        // Single-table select: Drizzle renders ${brokerages.id} as bare "id" here, which the
+        // subquery would resolve to its own id column. Qualify with the outer table name instead.
+        agents: sql<number>`(select count(*)::int from agent_profiles a where a.brokerage_id = brokerages.id)`,
+        listings: sql<number>`(select count(*)::int from listings l where l.brokerage_id = brokerages.id and l.status in ('active','coming_soon'))`,
       })
       .from(brokerages)
       .orderBy(brokerages.name),
@@ -523,6 +528,41 @@ export async function listSubscriptions(status: string, page: number) {
     plans: planRows,
     payments: paymentRows,
   };
+}
+
+export async function listFeaturesAdmin() {
+  return getDb()
+    .select()
+    .from(features)
+    .orderBy(features.category, features.sortOrder, features.name);
+}
+
+/** Every plan with its entitlements and live subscriber count. */
+export async function listPlansAdmin() {
+  const db = getDb();
+  const [planRows, ents, subs] = await Promise.all([
+    db.select().from(plans).orderBy(plans.sortOrder, plans.name),
+    db.select().from(planEntitlements),
+    db
+      .select({ planId: subscriptions.planId, n: count() })
+      .from(subscriptions)
+      .where(sql`${subscriptions.status} in ('trialing','active','past_due')`)
+      .groupBy(subscriptions.planId),
+  ]);
+  const subCount = new Map(subs.map((s) => [s.planId, s.n]));
+  return planRows.map((p) => ({
+    ...p,
+    subscribers: subCount.get(p.id) ?? 0,
+    entitlements: Object.fromEntries(
+      ents
+        .filter((e) => e.planId === p.id)
+        .map((e) => [e.featureKey, { enabled: e.enabled, limit: e.limitValue }]),
+    ) as Record<string, { enabled: boolean; limit: number | null }>,
+  }));
+}
+
+export async function listFlagsAdmin() {
+  return getDb().select().from(featureFlags).orderBy(featureFlags.key);
 }
 
 export async function listAudit(page: number) {

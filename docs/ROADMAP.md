@@ -40,25 +40,17 @@ review/report moderation) in `src/server/actions/admin.ts`. Settings/plans/flags
 `src/components/admin/forms.tsx` (GeneralSettingsForm, MonetizationForm, AISettingsForm, AIPlayground,
 TestEmailForm, FlagForm, PlanForm, FeatureForm, GrantPlanForm) but their **pages are not wired up yet**.
 
-**Known bug found and partially fixed:** several correlated subqueries in `src/server/admin/queries.ts`
-interpolate `${table.column}` (a Drizzle column reference) *inside* a nested `sql` template that has its
-own subquery FROM clause (e.g. `... from listings l where l.agent_id = ${users.id}`). Postgres reported
-"column reference is ambiguous" because the outer table's column isn't table-qualified in that position —
-it renders as bare `"id"` which collides with a same-named column in the subquery's own scope. This broke
-`/admin/users` (500 error). **Fix applied:** in `listUsers()`, replaced `${users.id}` with plain `users.id`
-text in the `listings` and `plan` subqueries (valid because `users` is the outer query's real, unaliased
-table name). **Still needs the same fix** (same replace-with-plain-text pattern) in, at minimum:
-- `listAgentsAdmin()` — the `activeListings` / `leads30` subqueries (`${users.id}`)
-- `listAgentsAdmin()`'s brokerages block — `agents` / `listings` subqueries (`${brokerages.id}`)
-- `listListingsAdmin()` — the `photo` subquery (`${properties.id}`)
-- `src/server/agents.ts` — `activeListings` (`${users.id}`) and the `f.city` `exists (...)` subquery
-  (`${users.id}` inside `and (... where l.agent_id = ${users.id} ...)`)
-
-Worth a careful re-check even though they haven't errored yet (same shape, may just not have hit the
-colliding-name case in testing): `src/server/search/postgres.ts` (`photoUrl`, `photoCount`, `priceCut`
-subqueries using `${properties.id}` / `${listings.id}` / `${listings.price}`), and
-`listReportsAdmin()`'s `${listings.id}::text in (...)` (different pattern — an IN-list, not a correlated
-subquery — lower risk but worth a test pass with real report rows against listings).
+**Correlated-subquery column bug — fixed.** Root cause (verified in `drizzle-orm/pg-core/dialect.js`
+`buildSelection`): in a select with **no joins** (`isSingleTable`), Drizzle renders every column
+reference in the SELECT list unqualified — including `${table.col}` inside a `sql` subquery — so
+`where l.agent_id = ${users.id}` becomes `= "id"`, which Postgres resolves against the subquery's own
+scope (silently wrong, or "ambiguous" when the subquery joins two tables with `id`). Queries with joins,
+and all WHERE clauses, are always rendered `"table"."col"` and are unaffected. Fixed by writing the outer
+column as plain text (`users.id`, `brokerages.id`) in the two single-table selects: `listUsers()` and the
+brokerages block of `listAgentsAdmin()` (whose counts were silently always ~0). The other sites listed
+previously (`listAgentsAdmin()` agent rows, `listListingsAdmin()`, `agents.ts`, `search/postgres.ts`,
+`listReportsAdmin()`) are all joined queries or WHERE clauses and were checked via `.toSQL()` — no change
+needed. Rule of thumb: in a join-less `.select({...})`, never interpolate a column inside a subquery.
 
 **Next up after that fix:** wire the existing forms into pages — `/admin/settings` (General +
 Monetization + AI tabs), `/admin/plans` (plans/features/entitlements, using `PlanForm`/`FeatureForm`),
