@@ -23,6 +23,13 @@ const AUDIENCES = [
   { value: "consumer", label: "Home shoppers" },
 ] as const;
 
+/** Sign-up link preselecting the account type the plan is for. */
+function registerHref(audience: string) {
+  return audience === "consumer"
+    ? "/register?next=/pricing"
+    : `/register?role=${audience}&next=/pricing`;
+}
+
 export default async function PricingPage(props: PageProps<"/pricing">) {
   const sp = (await props.searchParams) as SP;
   const interval = str(sp, "interval") === "year" ? "year" : "month";
@@ -140,14 +147,20 @@ export default async function PricingPage(props: PageProps<"/pricing">) {
                       </ButtonLink>
                     ) : !monetization.subscriptionsEnabled ? (
                       <ButtonLink
-                        href={user ? "/pro" : "/register?role=agent"}
+                        href={
+                          user
+                            ? p.audience === "consumer" || user.role === "consumer"
+                              ? "/"
+                              : "/pro"
+                            : registerHref(p.audience)
+                        }
                         variant="secondary"
                         className="w-full"
                       >
                         {user ? "Included free" : "Start free"}
                       </ButtonLink>
                     ) : !user ? (
-                      <ButtonLink href="/register?role=agent" className="w-full">
+                      <ButtonLink href={registerHref(p.audience)} className="w-full">
                         Create an account
                       </ButtonLink>
                     ) : (

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+import { submitKeepingValues } from "@/components/ui/form-submit";
 const ROLES = [
   { value: "consumer", label: "Buying or renting", icon: Home },
   { value: "agent", label: "I'm an agent", icon: Briefcase },
@@ -25,7 +26,7 @@ export function RegisterForm({
   const [state, action, pending] = useActionState<AuthState, FormData>(registerAction, undefined);
   const [role, setRole] = useState(defaultRole);
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-4">
       {next ? <input type="hidden" name="next" value={next} /> : null}
       <input type="hidden" name="role" value={role} />
       <fieldset>

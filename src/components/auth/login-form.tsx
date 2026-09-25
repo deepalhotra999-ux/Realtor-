@@ -6,10 +6,11 @@ import { loginAction, type AuthState } from "@/server/auth/actions";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 
+import { submitKeepingValues } from "@/components/ui/form-submit";
 export function LoginForm({ next }: { next?: string }) {
   const [state, action, pending] = useActionState<AuthState, FormData>(loginAction, undefined);
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-4">
       {next ? <input type="hidden" name="next" value={next} /> : null}
       <Field label="Email" htmlFor="email">
         <Input

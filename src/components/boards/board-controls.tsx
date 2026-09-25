@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useOptimistic, useState, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useActionState, useEffect, useOptimistic, useState, useTransition } from "react";
 import { Check, Copy, Heart, LayoutGrid, Plus, ThumbsDown, ThumbsUp } from "lucide-react";
 import {
   commentBoardItemAction,
@@ -16,6 +17,11 @@ import { cn } from "@/lib/utils";
 
 export function CreateBoardForm({ listingId }: { listingId?: string }) {
   const [state, action, pending] = useActionState(createBoardAction, undefined);
+  const router = useRouter();
+  // Created from a listing page: re-render it so the new board appears in the list.
+  useEffect(() => {
+    if (state?.ok && listingId) router.refresh();
+  }, [state, listingId, router]);
   if (state?.ok) return <p className="text-brand-700 text-sm">{state.message}</p>;
   return (
     <form action={action} className="space-y-2">
@@ -60,12 +66,16 @@ export function SaveToBoard({
   boards: { id: string; name: string; has: boolean }[];
   signedIn: boolean;
 }) {
-  const [items, setItems] = useState(boards);
+  // Server props stay the source of truth (they refresh after a board is
+  // created); local toggles are layered on top until the next refresh.
+  const [toggled, setToggled] = useState<Record<string, boolean>>({});
+  const items = boards.map((b) => ({ ...b, has: toggled[b.id] ?? b.has }));
   const [pending, start] = useTransition();
+  const pathname = usePathname();
   if (!signedIn)
     return (
       <Link
-        href="/login?next=/boards"
+        href={`/login?next=${encodeURIComponent(pathname)}`}
         className="border-line bg-surface hover:border-line-strong inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-medium transition"
       >
         <LayoutGrid className="size-4" /> Board
@@ -93,10 +103,7 @@ export function SaveToBoard({
                     onClick={() =>
                       start(async () => {
                         const res = await toggleBoardItemAction(b.id, listingId);
-                        if ("added" in res)
-                          setItems((xs) =>
-                            xs.map((x) => (x.id === b.id ? { ...x, has: res.added } : x)),
-                          );
+                        if ("added" in res) setToggled((t) => ({ ...t, [b.id]: res.added }));
                       })
                     }
                     className="hover:bg-paper flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm"

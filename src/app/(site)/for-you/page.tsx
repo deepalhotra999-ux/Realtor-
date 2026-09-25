@@ -37,7 +37,7 @@ export default async function ForYouPage() {
   const hasExplicit = Object.keys(rec.explicit).length > 0;
 
   return (
-    <div className="mx-auto grid grid-cols-1 max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_340px]">
+    <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_340px]">
       <div>
         <p className="text-brand-600 mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-[0.14em] uppercase">
           <Sparkles className="size-3.5" /> Personalized

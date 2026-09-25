@@ -10,6 +10,7 @@ import {
 } from "@/server/actions/pro";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
+import { submitKeepingValues } from "@/components/ui/form-submit";
 import { StatusMessage } from "./listing-form";
 
 export function ActivityForm({ leadId }: { leadId: string }) {
@@ -77,7 +78,7 @@ export function EmailLeadForm({
   const [drafting, start] = useTransition();
   if (state?.ok) return <StatusMessage state={state} />;
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-3">
       <p className="text-muted text-xs">To: {email}</p>
       <Input name="subject" defaultValue={defaultSubject} className="h-10" aria-label="Subject" />
       <Textarea
@@ -123,7 +124,7 @@ export function EmailLeadForm({
 export function NewLeadForm() {
   const [state, action, pending] = useActionState(createLeadAction, undefined);
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Field label="Name">
           <Input name="name" required className="h-10" />

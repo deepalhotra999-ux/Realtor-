@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+import { submitKeepingValues } from "@/components/ui/form-submit";
 interface Viewer {
   name: string;
   email: string;
@@ -71,7 +72,7 @@ function ContactForm({
   );
   if (state?.ok) return <Success message={state.message} />;
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-3">
       <input type="hidden" name="listingId" value={listingId} />
       <Input
         name="name"
@@ -126,7 +127,7 @@ function TourForm({ listingId, viewer }: { listingId: string; viewer: Viewer | n
   const [type, setType] = useState<"in_person" | "video">("in_person");
   if (state?.ok) return <Success message={state.message} />;
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-4">
       <input type="hidden" name="listingId" value={listingId} />
       <input type="hidden" name="date" value={date} />
       <input type="hidden" name="time" value={time} />

@@ -9,6 +9,7 @@ import {
 } from "@/server/actions/pro";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
+import { submitKeepingValues } from "@/components/ui/form-submit";
 import { AMENITIES, PROPERTY_TYPE_LABELS, PROPERTY_TYPES, type AmenityKey } from "@/lib/domain";
 
 export interface ListingFormValues {
@@ -97,7 +98,12 @@ export function ListingForm({ initial }: { initial: ListingFormValues }) {
     });
 
   return (
-    <form ref={formRef} action={action} className="space-y-5">
+    <form
+      ref={formRef}
+      action={action}
+      onSubmit={submitKeepingValues(action)}
+      className="space-y-5"
+    >
       {initial.id ? <input type="hidden" name="id" value={initial.id} /> : null}
 
       <Section title="Basics">

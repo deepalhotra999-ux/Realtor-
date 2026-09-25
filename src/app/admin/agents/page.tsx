@@ -101,28 +101,30 @@ export default async function AgentsAdmin(props: PageProps<"/admin/agents">) {
       />
 
       <Panel title="Brokerages" className="mt-8" padded={false}>
-        <table className="w-full text-sm">
-          <thead>
-            <tr>
-              <Th>Name</Th>
-              <Th>Market</Th>
-              <Th>Agents</Th>
-              <Th>Active listings</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {brokerages.map((b) => (
-              <tr key={b.id}>
-                <Td className="font-medium">{b.name}</Td>
-                <Td>
-                  {b.city}, {b.state}
-                </Td>
-                <Td className="tabular">{b.agents}</Td>
-                <Td className="tabular">{b.listings}</Td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <Th>Name</Th>
+                <Th>Market</Th>
+                <Th>Agents</Th>
+                <Th>Active listings</Th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {brokerages.map((b) => (
+                <tr key={b.id}>
+                  <Td className="font-medium">{b.name}</Td>
+                  <Td>
+                    {b.city}, {b.state}
+                  </Td>
+                  <Td className="tabular">{b.agents}</Td>
+                  <Td className="tabular">{b.listings}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Panel>
     </>
   );

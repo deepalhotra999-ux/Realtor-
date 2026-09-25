@@ -7,6 +7,7 @@ import { Field, Input, Select } from "@/components/ui/input";
 import { AMENITIES, PROPERTY_TYPE_LABELS, PROPERTY_TYPES, type AmenityKey } from "@/lib/domain";
 import type { Preferences } from "@/lib/ai/match";
 
+import { submitKeepingValues } from "@/components/ui/form-submit";
 const TOP_AMENITIES: AmenityKey[] = [
   "garage",
   "fenced_yard",
@@ -23,7 +24,7 @@ const TOP_AMENITIES: AmenityKey[] = [
 export function HomePrefsForm({ p }: { p: Preferences }) {
   const [state, action, pending] = useActionState(saveHomePreferencesAction, undefined);
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <Field label="Looking to">
           <Select name="listingType" defaultValue={p.listingType ?? ""} className="h-10">

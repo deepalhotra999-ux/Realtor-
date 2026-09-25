@@ -7,6 +7,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, Textarea } from "@/components/ui/input";
 
+import { submitKeepingValues } from "@/components/ui/form-submit";
 export function ReportButton({
   targetType,
   targetId,
@@ -34,7 +35,7 @@ export function ReportButton({
         {state?.ok ? (
           <p className="text-ink-2 text-sm">{state.message}</p>
         ) : (
-          <form action={action} className="space-y-4">
+          <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-4">
             <input type="hidden" name="targetType" value={targetType} />
             <input type="hidden" name="targetId" value={targetId} />
             <Select name="reason" defaultValue="inaccurate" aria-label="Reason">

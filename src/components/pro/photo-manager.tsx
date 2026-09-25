@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { ArrowDown, ArrowUp, ImagePlus, Trash2 } from "lucide-react";
 import {
   deleteListingPhotoAction,
@@ -10,6 +10,22 @@ import {
 import { ActionButton } from "@/components/admin/controls";
 import { Button } from "@/components/ui/button";
 import { StatusMessage } from "./listing-form";
+
+/** Mirrors the server limits so users see a clear message before uploading. */
+const MAX_FILE_MB = 8;
+const MAX_BATCH_MB = 45;
+const MAX_FILES = 20;
+
+function checkSelection(files: FileList | null): string | null {
+  if (!files?.length) return null;
+  if (files.length > MAX_FILES) return `Choose at most ${MAX_FILES} photos at a time.`;
+  const big = [...files].find((f) => f.size > MAX_FILE_MB * 1024 * 1024);
+  if (big) return `${big.name} is larger than ${MAX_FILE_MB} MB.`;
+  const total = [...files].reduce((n, f) => n + f.size, 0);
+  if (total > MAX_BATCH_MB * 1024 * 1024)
+    return `These photos add up to more than ${MAX_BATCH_MB} MB — upload them in smaller batches.`;
+  return null;
+}
 
 export function PhotoManager({
   listingId,
@@ -22,6 +38,7 @@ export function PhotoManager({
     uploadListingPhotosAction.bind(null, listingId),
     undefined,
   );
+  const [selectionError, setSelectionError] = useState<string | null>(null);
   return (
     <div className="space-y-4">
       {photos.length ? (
@@ -77,13 +94,23 @@ export function PhotoManager({
           name="photos"
           accept="image/jpeg,image/png,image/webp,image/avif"
           multiple
+          onChange={(e) => setSelectionError(checkSelection(e.currentTarget.files))}
           className="file:border-line file:bg-surface text-muted text-sm file:mr-3 file:rounded-full file:border file:px-3 file:py-1.5 file:text-sm"
         />
-        <Button type="submit" size="sm" variant="secondary" disabled={pending}>
+        <Button
+          type="submit"
+          size="sm"
+          variant="secondary"
+          disabled={pending || selectionError !== null}
+        >
           <ImagePlus className="size-4" /> {pending ? "Uploading…" : "Upload"}
         </Button>
         <div className="w-full">
-          <StatusMessage state={state} />
+          {selectionError ? (
+            <StatusMessage state={{ error: selectionError }} />
+          ) : (
+            <StatusMessage state={state} />
+          )}
         </div>
       </form>
     </div>

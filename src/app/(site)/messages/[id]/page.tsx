@@ -22,7 +22,7 @@ export default async function ConversationPage(props: PageProps<"/messages/[id]"
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <h1 className="font-display mb-6 hidden text-4xl md:block">Messages</h1>
-      <div className="border-line bg-surface shadow-card grid grid-cols-1 h-[calc(100dvh-12rem)] min-h-[480px] overflow-hidden rounded-2xl border md:grid-cols-[340px_1fr]">
+      <div className="border-line bg-surface shadow-card grid h-[calc(100dvh-12rem)] min-h-[480px] grid-cols-1 overflow-hidden rounded-2xl border md:grid-cols-[340px_1fr]">
         <div className="border-line hidden overflow-y-auto md:block md:border-r">
           <Inbox items={items} activeId={id} />
         </div>

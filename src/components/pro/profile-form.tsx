@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { saveAgentProfileAction } from "@/server/actions/pro";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui/input";
+import { submitKeepingValues } from "@/components/ui/form-submit";
 import { StatusMessage } from "./listing-form";
 
 export interface ProfileValues {
@@ -22,7 +23,7 @@ export interface ProfileValues {
 export function ProfileForm({ p }: { p: ProfileValues }) {
   const [state, action, pending] = useActionState(saveAgentProfileAction, undefined);
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-4">
       <Field label="Headline" hint="One line shown under your name.">
         <Input name="headline" maxLength={140} defaultValue={p.headline ?? ""} />
       </Field>

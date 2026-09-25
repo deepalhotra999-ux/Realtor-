@@ -360,6 +360,8 @@ export async function setMyListingFeaturedAction(
 /* ── Photos ──────────────────────────────────────────────────────────────── */
 
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+/** Must stay under serverActions.bodySizeLimit in next.config.ts. */
+const MAX_BATCH_BYTES = 45 * 1024 * 1024;
 
 export async function uploadListingPhotosAction(
   listingId: string,
@@ -372,6 +374,8 @@ export async function uploadListingPhotosAction(
   const files = form.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
   if (!files.length) return { error: "Choose one or more photos." };
   if (files.length > 20) return { error: "Upload at most 20 photos at a time." };
+  if (files.reduce((n, f) => n + f.size, 0) > MAX_BATCH_BYTES)
+    return { error: "These photos are too large together — upload them in smaller batches." };
   const storage = getStorage();
   let order = mine.media.length;
   let added = 0;

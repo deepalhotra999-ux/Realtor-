@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+import { submitKeepingValues } from "@/components/ui/form-submit";
 function Done({ message }: { message?: string }) {
   return (
     <div className="bg-brand-50 text-brand-700 flex items-center gap-3 rounded-2xl p-4 text-sm">
@@ -34,7 +35,7 @@ export function AgentContactForm({
   );
   if (state?.ok) return <Done message={state.message} />;
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-3">
       <input type="hidden" name="agentId" value={agentId} />
       <Input
         name="name"
@@ -79,7 +80,7 @@ export function ReviewForm({ agentId }: { agentId: string }) {
   const [rating, setRating] = useState(5);
   if (state?.ok) return <Done message={state.message} />;
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-3">
       <input type="hidden" name="agentId" value={agentId} />
       <input type="hidden" name="rating" value={rating} />
       <div className="flex items-center gap-1" role="radiogroup" aria-label="Rating">
