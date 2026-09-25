@@ -13,6 +13,7 @@ import {
   leads,
   listings,
   messages,
+  reports,
   reviews,
   savedSearches,
   tours,
@@ -366,4 +367,25 @@ export async function contactAgentProfileAction(
     { email: true },
   );
   return { ok: true, message: "Sent! Expect a reply soon." };
+}
+
+/* ── Trust & safety reports ──────────────────────────────────────────────── */
+
+const reportSchema = z.object({
+  targetType: z.enum(["listing", "review", "user", "message"]),
+  targetId: z.string().min(1).max(100),
+  reason: z.enum(["inaccurate", "fraud", "discrimination", "offensive", "spam", "other"]),
+  details: z.string().trim().max(2000).optional(),
+});
+
+export async function submitReportAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const parsed = reportSchema.safeParse(
+    Object.fromEntries([...form.entries()].map(([k, v]) => [k, v === "" ? undefined : v])),
+  );
+  if (!parsed.success) return { error: "Choose a reason." };
+  const user = await getCurrentUser();
+  await getDb()
+    .insert(reports)
+    .values({ ...parsed.data, reporterId: user?.id ?? null });
+  return { ok: true, message: "Thanks — our team will review this report." };
 }

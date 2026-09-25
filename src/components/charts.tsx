@@ -275,18 +275,20 @@ export function LineChart({
               </text>
             </g>
           ))}
-          {data.map((d, i) => (
-            <text
-              key={d.label}
-              x={x(i)}
-              y={H - 12}
-              textAnchor="middle"
-              fontSize="11"
-              fill="var(--color-muted)"
-            >
-              {d.label}
-            </text>
-          ))}
+          {data.map((d, i) =>
+            i % Math.ceil(data.length / 7) === 0 || i === last ? (
+              <text
+                key={`${d.label}-${i}`}
+                x={x(i)}
+                y={H - 12}
+                textAnchor={i === last && i > 0 ? "end" : "middle"}
+                fontSize="11"
+                fill="var(--color-muted)"
+              >
+                {d.label}
+              </text>
+            ) : null,
+          )}
           <path
             d={path}
             fill="none"

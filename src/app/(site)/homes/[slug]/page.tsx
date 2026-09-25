@@ -48,6 +48,7 @@ import { CompareToggle } from "@/components/listing/compare-toggle";
 import { ListingCard, listingBadges } from "@/components/listing/listing-card";
 import { LocationMap } from "@/components/map";
 import { ShareButton } from "@/components/property/share-button";
+import { ReportButton } from "@/components/property/report-button";
 
 export async function generateMetadata(props: PageProps<"/homes/[slug]">): Promise<Metadata> {
   const { slug } = await props.params;
@@ -399,6 +400,9 @@ export default async function ListingPage(props: PageProps<"/homes/[slug]">) {
               ? "Fictional demo listing — contacting creates demo CRM activity."
               : "Listing information is deemed reliable but not guaranteed."}
           </p>
+          <div className="mt-2 text-center">
+            <ReportButton targetType="listing" targetId={l.id} />
+          </div>
         </aside>
       </div>
 
