@@ -47,7 +47,7 @@ export function PriceFilter({
   return (
     <Popover label={priceLabel(q)} active={q.minPrice !== undefined || q.maxPrice !== undefined}>
       {(close) => (
-        <div className="w-72">
+        <div className="w-72 max-w-full">
           <p className="mb-3 text-sm font-semibold">
             {q.listingType === "rent" ? "Monthly rent" : "Price range"}
           </p>
@@ -136,7 +136,7 @@ export function BedsBathsFilter({
   return (
     <Popover label={label} active={q.minBeds !== undefined || q.minBaths !== undefined}>
       {(close) => (
-        <div className="w-[22rem] space-y-4">
+        <div className="w-[22rem] max-w-full space-y-4">
           <div>
             <p className="mb-2 text-sm font-semibold">Bedrooms</p>
             <Segmented
@@ -189,7 +189,7 @@ export function HomeTypeFilter({
   return (
     <Popover label={label} active={q.propertyTypes.length > 0}>
       {(close) => (
-        <div className="w-64">
+        <div className="w-64 max-w-full">
           <p className="mb-3 text-sm font-semibold">Home type</p>
           <div className="grid gap-1">
             {types.map((t) => (

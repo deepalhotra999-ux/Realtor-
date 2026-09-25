@@ -91,7 +91,7 @@ export function SaveToBoard({
       }
     >
       {() => (
-        <div className="w-64 space-y-3">
+        <div className="w-64 max-w-full space-y-3">
           <p className="text-sm font-semibold">Save to a shared board</p>
           {items.length ? (
             <ul className="space-y-1">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +31,9 @@ export function Dialog({
     };
   }, [open, onClose]);
   if (!open) return null;
-  return (
+  // Portaled to the body so ancestors with overflow or backdrop-filter can
+  // never clip or trap the fixed overlay.
+  return createPortal(
     <div
       className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-6"
       role="dialog"
@@ -62,6 +65,7 @@ export function Dialog({
           </div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
