@@ -82,7 +82,7 @@ export default async function ProAnalyticsPage(props: PageProps<"/pro/analytics"
           hint={`${pct(a.conversion.won, a.conversion.total)} of ${a.conversion.total} new leads`}
         />
       </div>
-      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
         <LineChart
           title="Views of your listings"
           subtitle={`Daily, last ${days} days`}
@@ -96,7 +96,7 @@ export default async function ProAnalyticsPage(props: PageProps<"/pro/analytics"
           data={a.daily.map((d) => ({ label: day(d.day), value: d.inquiries }))}
         />
       </div>
-      <div className="mt-6 grid gap-6 xl:grid-cols-[1.6fr_1fr]">
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[1.6fr_1fr]">
         <Table>
           <thead>
             <tr>

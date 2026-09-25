@@ -219,7 +219,7 @@ export default async function ListingPage(props: PageProps<"/homes/[slug]">) {
                 </p>
                 <h1 className="text-ink-2 mt-2 text-lg">{address}</h1>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <FavoriteButton listingId={l.id} initial={favs.has(l.id)} variant="button" />
                 <CompareToggle listingId={l.id} variant="button" />
                 <SaveToBoard listingId={l.id} boards={myBoards} signedIn={Boolean(user)} />

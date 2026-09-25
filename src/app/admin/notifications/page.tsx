@@ -30,7 +30,7 @@ export default async function NotificationsAdminPage(props: PageProps<"/admin/no
           </>
         }
       />
-      <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_340px]">
         <div>
           <FilterTabs
             current={channel}

@@ -52,7 +52,7 @@ export default async function EditListingPage(props: PageProps<"/pro/listings/[i
         <p className="bg-brand-50 text-brand-700 mb-5 rounded-xl px-4 py-3 text-sm">{banner}</p>
       ) : null}
 
-      <div className="mb-5 grid gap-5 lg:grid-cols-[1fr_260px]">
+      <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-[1fr_260px]">
         <Panel title="Photos" description="The first photo is the cover image.">
           <PhotoManager
             listingId={l.id}

@@ -38,7 +38,7 @@ export default async function AnalyticsPage(props: PageProps<"/admin/analytics">
           href: `/admin/analytics?days=${d}`,
         }))}
       />
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <LineChart
           title="Listing views"
           subtitle={`Daily, last ${days} days`}
@@ -53,7 +53,7 @@ export default async function AnalyticsPage(props: PageProps<"/admin/analytics">
         />
       </div>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_1fr]">
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[1fr_1fr]">
         <Panel title="Conversion funnel" description="Distinct visitors reaching each step.">
           <ol className="space-y-3">
             {a.funnel.map((s, i) => {
@@ -98,7 +98,7 @@ export default async function AnalyticsPage(props: PageProps<"/admin/analytics">
         </Panel>
       </div>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[1.6fr_1fr]">
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[1.6fr_1fr]">
         <div>
           <h2 className="mb-3 font-semibold">Most viewed listings</h2>
           <Table>

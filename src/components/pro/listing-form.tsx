@@ -101,7 +101,7 @@ export function ListingForm({ initial }: { initial: ListingFormValues }) {
       {initial.id ? <input type="hidden" name="id" value={initial.id} /> : null}
 
       <Section title="Basics">
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label="Listing type">
             <Select
               name="listingType"
@@ -137,7 +137,7 @@ export function ListingForm({ initial }: { initial: ListingFormValues }) {
       </Section>
 
       <Section title="Location">
-        <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_120px]">
           <Field label="Street address">
             <Input name="street" required defaultValue={initial.street} />
           </Field>
@@ -145,7 +145,7 @@ export function ListingForm({ initial }: { initial: ListingFormValues }) {
             <Input name="unit" defaultValue={initial.unit ?? ""} />
           </Field>
         </div>
-        <div className="grid gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
           <Field label="City" className="sm:col-span-2">
             <Input name="city" required defaultValue={initial.city} />
           </Field>
@@ -169,7 +169,7 @@ export function ListingForm({ initial }: { initial: ListingFormValues }) {
           <summary className="text-muted cursor-pointer text-sm select-none">
             Map coordinates (optional — we geocode the address otherwise)
           </summary>
-          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Latitude">
               <Input name="latitude" type="number" step="any" defaultValue={v(initial.latitude)} />
             </Field>
@@ -244,7 +244,7 @@ export function ListingForm({ initial }: { initial: ListingFormValues }) {
 
       {type === "rent" ? (
         <Section title="Rental terms">
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label="Available from">
               <Input name="availableFrom" type="date" defaultValue={initial.availableFrom ?? ""} />
             </Field>

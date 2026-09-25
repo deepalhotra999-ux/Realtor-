@@ -60,7 +60,7 @@ export default async function BoardPage(props: PageProps<"/boards/[id]">) {
         </div>
       </div>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]">
+      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
         <div>
           {ranked.length === 0 ? (
             <EmptyState
@@ -73,7 +73,7 @@ export default async function BoardPage(props: PageProps<"/boards/[id]">) {
             <ul className="space-y-6">
               {ranked.map((item) => (
                 <li key={item.id}>
-                  <Card className="grid gap-4 p-4 md:grid-cols-[280px_1fr]">
+                  <Card className="grid grid-cols-1 gap-4 p-4 md:grid-cols-[280px_1fr]">
                     <ListingCard listing={item.listing} />
                     <div className="flex min-w-0 flex-col">
                       <div className="flex items-start justify-between gap-2">

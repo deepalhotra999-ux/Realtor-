@@ -124,7 +124,7 @@ export function NewLeadForm() {
   const [state, action, pending] = useActionState(createLeadAction, undefined);
   return (
     <form action={action} className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Field label="Name">
           <Input name="name" required className="h-10" />
         </Field>
@@ -135,7 +135,7 @@ export function NewLeadForm() {
           <Input name="phone" className="h-10" />
         </Field>
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Field label="Looking to">
           <Select name="intent" className="h-10" defaultValue="">
             <option value="">Not sure yet</option>

@@ -29,7 +29,7 @@ export function ProfileForm({ p }: { p: ProfileValues }) {
       <Field label="About you">
         <Textarea name="bio" rows={6} defaultValue={p.bio ?? ""} />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <Field label="Phone" className="sm:col-span-2">
           <Input name="phone" defaultValue={p.phone ?? ""} />
         </Field>
@@ -40,7 +40,7 @@ export function ProfileForm({ p }: { p: ProfileValues }) {
           <Input name="licenseState" maxLength={2} defaultValue={p.licenseState ?? ""} />
         </Field>
       </div>
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <Field label="Years of experience">
           <Input
             name="yearsExperience"
@@ -53,7 +53,7 @@ export function ProfileForm({ p }: { p: ProfileValues }) {
           <Input name="specialties" defaultValue={p.specialties.join(", ")} />
         </Field>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Languages" hint="Comma separated">
           <Input name="languages" defaultValue={p.languages.join(", ")} />
         </Field>

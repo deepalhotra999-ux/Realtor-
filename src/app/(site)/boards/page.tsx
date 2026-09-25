@@ -28,7 +28,7 @@ export default async function BoardsPage(props: PageProps<"/boards">) {
         </p>
       ) : null}
 
-      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {boards.map((b) => (
           <Link key={b.id} href={`/boards/${b.id}`} className="group">
             <Card className="group-hover:shadow-lift overflow-hidden transition">

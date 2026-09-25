@@ -142,7 +142,7 @@ export default async function SubscriptionsPage(props: PageProps<"/admin/subscri
         href={(p) => withParams("/admin/subscriptions", sp, { page: p })}
       />
 
-      <div className="mt-8 grid gap-6 xl:grid-cols-2">
+      <div className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Panel
           title="Grant a plan"
           description="Comp a plan or start a trial for any user. Replaces their current subscription."

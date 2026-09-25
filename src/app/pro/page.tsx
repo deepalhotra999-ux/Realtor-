@@ -40,7 +40,7 @@ export default async function ProOverviewPage() {
         <KPI label="Deals won" value={formatNumber(o.leads.won)} />
       </div>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Panel
           title="Follow-ups due"
           description="Open leads due for contact within a day."

@@ -86,7 +86,7 @@ export default async function LeadPage(props: PageProps<"/pro/leads/[id]">) {
         }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_360px]">
         <div className="space-y-6">
           {lead.message ? (
             <Panel title="Their message">

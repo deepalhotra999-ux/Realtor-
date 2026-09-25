@@ -37,7 +37,7 @@ export default async function ForYouPage() {
   const hasExplicit = Object.keys(rec.explicit).length > 0;
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_340px]">
+    <div className="mx-auto grid grid-cols-1 max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_340px]">
       <div>
         <p className="text-brand-600 mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-[0.14em] uppercase">
           <Sparkles className="size-3.5" /> Personalized
@@ -73,7 +73,7 @@ export default async function ForYouPage() {
             </EmptyState>
           </div>
         ) : (
-          <ul className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          <ul className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {rec.results.map(({ listing, match }) => (
               <li key={listing.id} className="flex flex-col">
                 <ListingCard listing={listing} favorited={favs.has(listing.id)} />

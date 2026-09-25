@@ -90,7 +90,7 @@ export default async function PricingPage(props: PageProps<"/pricing">) {
       {groups.map((g) => (
         <section key={g.value} className="mt-12">
           <h2 className="mb-5 text-xl font-semibold">{g.label}</h2>
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
             {g.plans.map((p) => {
               const price = priceFor(p, interval);
               const savings = annualSavingsPct(p);

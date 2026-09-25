@@ -31,7 +31,7 @@ export default async function NotificationsPage() {
   const prefs = parseNotificationPrefs(me?.preferences?.notifications);
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_380px]">
+    <div className="mx-auto grid grid-cols-1 max-w-6xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_380px]">
       <div>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
