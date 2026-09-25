@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/ui/misc";
 import { MAIN_NAV } from "./nav-links";
@@ -33,89 +34,102 @@ export function MobileNav({ user }: { user: { name: string; role: string } | nul
       >
         <Menu className="size-5" />
       </button>
-      {open ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="bg-ink/30 absolute inset-0 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
-          />
-          <div className="animate-fade-up bg-paper shadow-pop absolute inset-y-0 left-0 flex w-[84%] max-w-sm flex-col p-5">
-            <div className="mb-6 flex items-center justify-between">
-              <Logo />
-              <button
-                type="button"
+      {/*
+       * Portal to <body>: the sticky header uses backdrop-filter, which makes it
+       * the containing block for position:fixed children — rendered in place,
+       * the drawer would be clipped to the 64px header instead of the viewport.
+       */}
+      {open
+        ? createPortal(
+            <div className="fixed inset-0 z-50 lg:hidden">
+              <div
+                className="bg-ink/30 absolute inset-0 backdrop-blur-sm"
                 onClick={() => setOpen(false)}
-                aria-label="Close menu"
-                className="hover:bg-ink/5 inline-flex size-10 items-center justify-center rounded-full"
+              />
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Menu"
+                className="animate-fade-up bg-paper shadow-pop absolute inset-y-0 left-0 flex w-[84%] max-w-sm flex-col overflow-y-auto overscroll-contain p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
               >
-                <X className="size-5" />
-              </button>
-            </div>
-            <nav className="flex flex-col gap-1">
-              {MAIN_NAV.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="text-ink hover:bg-surface rounded-xl px-3 py-3 text-base font-medium"
-                >
-                  {item.label}
-                </Link>
-              ))}
-              <div className="bg-line my-3 h-px" />
-              <Link
-                href="/favorites"
-                className="text-ink-2 hover:bg-surface rounded-xl px-3 py-3 text-base"
-              >
-                Saved homes
-              </Link>
-              <Link
-                href="/compare"
-                className="text-ink-2 hover:bg-surface rounded-xl px-3 py-3 text-base"
-              >
-                Compare
-              </Link>
-              <Link
-                href="/mortgage"
-                className="text-ink-2 hover:bg-surface rounded-xl px-3 py-3 text-base"
-              >
-                Mortgage calculator
-              </Link>
-              {user && user.role !== "consumer" ? (
-                <Link
-                  href="/pro"
-                  className="text-ink-2 hover:bg-surface rounded-xl px-3 py-3 text-base"
-                >
-                  Pro workspace
-                </Link>
-              ) : null}
-              {user?.role === "admin" ? (
-                <Link
-                  href="/admin"
-                  className="text-ink-2 hover:bg-surface rounded-xl px-3 py-3 text-base"
-                >
-                  Admin panel
-                </Link>
-              ) : null}
-            </nav>
-            {!user ? (
-              <div className="mt-auto grid gap-2">
-                <Link
-                  href="/register"
-                  className="bg-brand-600 rounded-full py-3 text-center font-medium text-white"
-                >
-                  Join free
-                </Link>
-                <Link
-                  href="/login"
-                  className="border-line bg-surface rounded-full border py-3 text-center font-medium"
-                >
-                  Sign in
-                </Link>
+                <div className="mb-6 flex items-center justify-between">
+                  <Logo />
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    aria-label="Close menu"
+                    className="hover:bg-ink/5 inline-flex size-10 items-center justify-center rounded-full"
+                  >
+                    <X className="size-5" />
+                  </button>
+                </div>
+                <nav className="flex flex-col gap-1">
+                  {MAIN_NAV.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="text-ink hover:bg-surface rounded-xl px-3 py-3 text-base font-medium"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                  <div className="bg-line my-3 h-px" />
+                  <Link
+                    href="/favorites"
+                    className="text-ink-2 hover:bg-surface rounded-xl px-3 py-3 text-base"
+                  >
+                    Saved homes
+                  </Link>
+                  <Link
+                    href="/compare"
+                    className="text-ink-2 hover:bg-surface rounded-xl px-3 py-3 text-base"
+                  >
+                    Compare
+                  </Link>
+                  <Link
+                    href="/mortgage"
+                    className="text-ink-2 hover:bg-surface rounded-xl px-3 py-3 text-base"
+                  >
+                    Mortgage calculator
+                  </Link>
+                  {user && user.role !== "consumer" ? (
+                    <Link
+                      href="/pro"
+                      className="text-ink-2 hover:bg-surface rounded-xl px-3 py-3 text-base"
+                    >
+                      Pro workspace
+                    </Link>
+                  ) : null}
+                  {user?.role === "admin" ? (
+                    <Link
+                      href="/admin"
+                      className="text-ink-2 hover:bg-surface rounded-xl px-3 py-3 text-base"
+                    >
+                      Admin panel
+                    </Link>
+                  ) : null}
+                </nav>
+                {!user ? (
+                  <div className="mt-auto grid gap-2">
+                    <Link
+                      href="/register"
+                      className="bg-brand-600 rounded-full py-3 text-center font-medium text-white"
+                    >
+                      Join free
+                    </Link>
+                    <Link
+                      href="/login"
+                      className="border-line bg-surface rounded-full border py-3 text-center font-medium"
+                    >
+                      Sign in
+                    </Link>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }
