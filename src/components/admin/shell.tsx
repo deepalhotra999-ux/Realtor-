@@ -62,6 +62,7 @@ const ICONS = {
 } as const;
 export type IconName = keyof typeof ICONS;
 import { Logo } from "@/components/ui/misc";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { cn } from "@/lib/utils";
 
 export interface NavItem {
@@ -152,6 +153,7 @@ export function DashboardShell({
           <span className="bg-ink rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-white uppercase">
             {title}
           </span>
+          <ThemeToggle className="ml-auto size-8" />
         </div>
         {nav}
       </aside>
@@ -175,6 +177,7 @@ export function DashboardShell({
             <Menu className="size-5" />
           </button>
           <Logo />
+          <ThemeToggle className="ml-auto" />
         </div>
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-8">{children}</main>
       </div>

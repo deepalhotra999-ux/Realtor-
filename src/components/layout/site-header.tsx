@@ -7,6 +7,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { MAIN_NAV } from "./nav-links";
 import { UserMenu } from "./user-menu";
 import { MobileNav } from "./mobile-nav";
+import { ThemeToggle } from "./theme-toggle";
 
 export async function SiteHeader() {
   const user = await getCurrentUser();
@@ -35,6 +36,7 @@ export async function SiteHeader() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-2">
+          <ThemeToggle />
           <Link
             href="/favorites"
             className="text-ink-2 hover:bg-ink/5 hover:text-ink hidden size-10 items-center justify-center rounded-full transition sm:inline-flex"

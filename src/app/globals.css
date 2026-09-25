@@ -120,6 +120,111 @@
   }
 }
 
+/*
+ * Dark theme. `data-theme` is set on <html> before first paint by the inline
+ * script in app/layout.tsx (System / Light / Dark, stored in localStorage).
+ * These rules are deliberately unlayered so they beat Tailwind's layered
+ * theme variables and utilities without !important.
+ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-paper: #0e1412;
+  --color-paper-2: #151d1a;
+  --color-surface: #19221f;
+  --color-line: #28332f;
+  --color-line-strong: #3a4742;
+  --color-ink: #e8eeeb;
+  --color-ink-2: #c3ccc7;
+  --color-muted: #95a29c;
+  --color-subtle: #6f7c76;
+
+  /* Tints become deep washes; text shades become light so they read on them. */
+  --color-brand-50: #11302a;
+  --color-brand-100: #174237;
+  --color-brand-200: #21594b;
+  --color-brand-300: #2f7a64;
+  --color-brand-400: #3f9c80;
+  --color-brand-500: #4fb393;
+  --color-brand-600: #4fb393;
+  --color-brand-700: #92d5bd;
+  --color-brand-800: #b6e5d4;
+  --color-brand-900: #d8f2e8;
+
+  --color-clay-50: #3a1f16;
+  --color-clay-100: #4d2a1d;
+  --color-clay-500: #e2805c;
+  --color-clay-600: #f09474;
+
+  --color-gold-100: #372d12;
+  --color-gold-500: #d9ad45;
+  --color-gold-700: #e9c877;
+
+  --color-sky-100: #152a3b;
+  --color-sky-600: #86b9e0;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px -4px rgb(0 0 0 / 0.45);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.35), 0 18px 40px -12px rgb(0 0 0 / 0.6);
+  --shadow-pop: 0 10px 40px -8px rgb(0 0 0 / 0.7);
+}
+
+/* Solid brand/danger fills carry white text: keep them deep enough for contrast. */
+[data-theme="dark"] :is(.bg-brand-600, .peer:checked ~ .peer-checked\:bg-brand-600) {
+  background-color: #1f7d63;
+}
+[data-theme="dark"] :is(.bg-brand-700, .hover\:bg-brand-700:hover) {
+  background-color: #196a54;
+}
+[data-theme="dark"] .bg-clay-600 {
+  background-color: #b5502e;
+}
+
+/* "Inverse" chips and buttons (ink background + white text) stay dark, just raised. */
+[data-theme="dark"] .bg-ink {
+  background-color: #2d3b36;
+}
+[data-theme="dark"] :is(.hover\:bg-ink:hover, .hover\:bg-ink-2:hover) {
+  background-color: #3a4a44;
+}
+[data-theme="dark"] :is(.border-ink) {
+  border-color: #2d3b36;
+}
+[data-theme="dark"] .ring-ink {
+  --tw-ring-color: #2d3b36;
+}
+
+/* Scrims and photo overlays stay dark rather than turning light. */
+[data-theme="dark"] .bg-ink\/30 {
+  background-color: rgb(0 0 0 / 0.5);
+}
+[data-theme="dark"] .bg-ink\/40 {
+  background-color: rgb(0 0 0 / 0.6);
+}
+[data-theme="dark"] :is(.bg-ink\/60, .bg-ink\/80, .bg-ink\/85, .bg-ink\/95) {
+  background-color: rgb(8 12 10 / 0.85);
+}
+
+/* White "glass" controls on photos become dark glass (their text is ink, now light). */
+[data-theme="dark"]
+  :is(.bg-white, .bg-white\/70, .bg-white\/90, .bg-white\/92, .bg-white\/95):not(.shadow) {
+  background-color: rgb(25 34 31 / 0.92);
+}
+[data-theme="dark"] .hover\:bg-white:hover {
+  background-color: var(--color-surface);
+}
+
+[data-theme="dark"] .skeleton {
+  background: linear-gradient(90deg, #1b2521 0px, #24302b 120px, #1b2521 240px);
+  background-size: 800px 100%;
+}
+
+[data-theme="dark"] .leaflet-container {
+  background: #1b2320;
+}
+[data-theme="dark"] .leaflet-control-attribution {
+  background: rgb(25 34 31 / 0.85) !important;
+  color: var(--color-muted);
+}
+
 /* Leaflet overrides — calmer, on-brand map chrome */
 .leaflet-container {
   font-family: var(--font-sans);

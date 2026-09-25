@@ -75,6 +75,21 @@ needed. Rule of thumb: in a join-less `.select({...})`, never interpolate a colu
 Not built (intentionally): renewal charging/dunning — the mock provider never moves money, so there is
 nothing to renew. A real adapter would drive renewals via its webhooks.
 
-## Phase 5 — Engagement
+## Phase 5 — Engagement ✅
 
-Saved-search alerts job, collaborative boards, personalized matching, notification preferences, dark mode.
+- Saved-search alerts: `runSavedSearchAlerts()` (`src/server/jobs/alerts.ts`) with pure scheduling in
+  `src/lib/alerts.ts` (instant/daily/weekly with jitter slack; the window always advances so a listing is
+  announced once). Trigger with `POST /api/jobs/alerts` + `Authorization: Bearer $JOBS_SECRET` every
+  10–15 min, or "Run now" in Admin → Notifications
+- Collaborative boards: `/boards`, `/boards/[id]` (love/pass votes, comments, most-loved first),
+  invite links (`/boards/join/[code]`, owners can reset), editor/viewer roles, "Board" button on every home,
+  members notified of new homes and comments
+- Personalized matching: `/for-you` merges explicit preferences (stored in `users.preferences.home`) over
+  preferences inferred from saved homes (`src/lib/ai/personalize.ts`), ranked with the explainable
+  Home Finder scoring
+- Notification preferences: per type × channel (in-app / email) in `users.preferences.notifications`,
+  enforced centrally in `notify()`; billing email can't be switched off. `/notifications` page with
+  mark-all-read and a header bell with unread count
+- Dark mode: token overrides under `:root[data-theme="dark"]` in `globals.css`, a pre-paint inline script
+  (no flash; follows the OS on "System"), and a System → Light → Dark toggle in the site header and
+  dashboard shells
