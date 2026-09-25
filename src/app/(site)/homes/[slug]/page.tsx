@@ -11,12 +11,14 @@ import {
   Clock,
   Home as HomeIcon,
   Info,
+  Navigation,
   Ruler,
   TrendingDown,
   Trees,
 } from "lucide-react";
 import { getCurrentUser } from "@/server/auth/session";
 import {
+  getComparables,
   getFavoriteIds,
   getListingDetail,
   getSimilarListings,
@@ -47,6 +49,8 @@ import { FavoriteButton } from "@/components/listing/favorite-button";
 import { CompareToggle } from "@/components/listing/compare-toggle";
 import { ListingCard, listingBadges } from "@/components/listing/listing-card";
 import { LocationMap } from "@/components/map";
+import { CompsSection } from "@/components/property/comps-section";
+import { directionsUrl } from "@/lib/map-pricing";
 import { ShareButton } from "@/components/property/share-button";
 import { ReportButton } from "@/components/property/report-button";
 import { SaveToBoard } from "@/components/boards/board-controls";
@@ -79,7 +83,8 @@ export default async function ListingPage(props: PageProps<"/homes/[slug]">) {
   if (!listing) notFound();
   const l = listing;
 
-  const [similar, favs, myBoards] = await Promise.all([
+  const [comparables, similar, favs, myBoards] = await Promise.all([
+    getComparables(l, 6),
     getSimilarListings(l, 8),
     getFavoriteIds(user?.id),
     user ? boardsForListing(user.id, l.id) : [],
@@ -344,14 +349,34 @@ export default async function ListingPage(props: PageProps<"/homes/[slug]">) {
 
           {/* Location */}
           <section>
-            <h2 className="font-display text-2xl">Location</h2>
-            <p className="text-muted mt-1 text-sm">
-              {l.neighborhood ? `${l.neighborhood}, ` : ""}
-              {l.city}, {l.state} {l.postalCode}
-            </p>
-            <div className="border-line relative isolate mt-4 h-80 overflow-hidden rounded-3xl border">
-              <LocationMap config={getMap().getConfig()} lat={l.latitude} lng={l.longitude} />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-2xl">Location</h2>
+                <p className="text-muted mt-1 text-sm">
+                  {l.neighborhood ? `${l.neighborhood}, ` : ""}
+                  {l.city}, {l.state} {l.postalCode}
+                </p>
+              </div>
+              <a
+                href={directionsUrl(l.latitude, l.longitude)}
+                target="_blank"
+                rel="noreferrer"
+                className="border-line bg-surface hover:bg-paper inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold"
+              >
+                <Navigation className="size-4" /> Get directions
+              </a>
             </div>
+            <div className="border-line relative isolate mt-4 h-80 overflow-hidden rounded-3xl border">
+              <LocationMap
+                config={getMap().getConfig()}
+                lat={l.latitude}
+                lng={l.longitude}
+                directions
+              />
+            </div>
+            <p className="text-subtle mt-2 text-xs">
+              Tap “Route from my location” to preview the drive on the map.
+            </p>
           </section>
 
           {/* History */}
@@ -424,7 +449,37 @@ export default async function ListingPage(props: PageProps<"/homes/[slug]">) {
         </a>
       </div>
 
-      {similar.length ? (
+      {comparables.length ? (
+        <div className="mt-16">
+          <CompsSection
+            subject={{
+              id: l.id,
+              price: l.price,
+              listingType: l.listingType,
+              street: l.street,
+              beds: l.beds,
+              baths: l.baths,
+              sqft: l.sqft,
+              latitude: l.latitude,
+              longitude: l.longitude,
+            }}
+            comps={comparables.map((c) => ({
+              id: c.listing.id,
+              slug: c.listing.slug,
+              street: c.listing.street,
+              city: c.listing.city,
+              price: c.listing.price,
+              beds: c.listing.beds,
+              baths: c.listing.baths,
+              sqft: c.listing.sqft,
+              latitude: c.listing.latitude,
+              longitude: c.listing.longitude,
+              distanceKm: c.distanceKm,
+            }))}
+            mapConfig={getMap().getConfig()}
+          />
+        </div>
+      ) : similar.length ? (
         <section className="mt-16">
           <h2 className="font-display text-3xl">Similar homes nearby</h2>
           <div className="-mx-4 mt-6 flex snap-x scrollbar-none gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4">

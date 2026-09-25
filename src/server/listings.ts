@@ -149,6 +149,48 @@ export async function getSimilarListings(l: ListingDetail, limit = 8): Promise<L
   return getSearch().byIds(ids.map((r) => r.id));
 }
 
+export interface Comparable {
+  listing: ListingSummary;
+  /** Straight-line distance from the subject property, in km. */
+  distanceKm: number;
+}
+
+/**
+ * True comparables for the comps explorer: same transaction type, price within
+ * ±25%, similar bedroom count, within 8 km — ordered nearest first. Stricter
+ * than getSimilarListings, which is tuned for discovery.
+ */
+export async function getComparables(l: ListingDetail, limit = 6): Promise<Comparable[]> {
+  const db = getDb();
+  const here = sql`ST_SetSRID(ST_MakePoint(${l.longitude}, ${l.latitude}), 4326)::geography`;
+  const rows = await db
+    .select({
+      id: listings.id,
+      distanceKm: sql<number>`(ST_Distance(${properties.location}::geography, ${here}) / 1000)::float`,
+    })
+    .from(listings)
+    .innerJoin(properties, eq(listings.propertyId, properties.id))
+    .where(
+      and(
+        ne(listings.id, l.id),
+        eq(listings.listingType, l.listingType),
+        inArray(listings.status, ["active", "coming_soon"]),
+        ownerInGoodStanding,
+        sql`${listings.price} between ${Math.round(l.price * 0.75)} and ${Math.round(l.price * 1.25)}`,
+        sql`ST_DWithin(${properties.location}::geography, ${here}, 8000)`,
+        l.beds === null
+          ? sql`true`
+          : sql`(${properties.beds} is null or abs(${properties.beds} - ${l.beds}) <= 1)`,
+      ),
+    )
+    .orderBy(sql`ST_Distance(${properties.location}::geography, ${here})`)
+    .limit(limit);
+  if (!rows.length) return [];
+  const summaries = await getSearch().byIds(rows.map((r) => r.id));
+  const distById = new Map(rows.map((r) => [r.id, r.distanceKm]));
+  return summaries.map((s) => ({ listing: s, distanceKm: distById.get(s.id) ?? 0 }));
+}
+
 export async function getFeaturedListings(
   limit = 8,
   sort: SearchQuery["sort"] = "relevance",

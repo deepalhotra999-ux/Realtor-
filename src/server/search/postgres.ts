@@ -209,6 +209,7 @@ export class PostgresSearchProvider implements SearchProvider {
         listingType: listings.listingType,
         status: listings.status,
         beds: properties.beds,
+        sqft: properties.sqft,
         isFeatured: listings.isFeatured,
       })
       .from(listings)

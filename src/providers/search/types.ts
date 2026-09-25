@@ -46,6 +46,8 @@ export interface MapPin {
   listingType: ListingType;
   status: ListingStatus;
   beds: number | null;
+  /** Living area in sqft; used for the $/sqft map coloring mode. */
+  sqft: number | null;
   isFeatured: boolean;
 }
 

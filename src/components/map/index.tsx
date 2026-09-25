@@ -15,3 +15,8 @@ export const LocationMap = dynamic(() => import("./location-map"), {
   ssr: false,
   loading: MapSkeleton,
 });
+export const CompsMap = dynamic(() => import("./comps-map"), {
+  ssr: false,
+  loading: MapSkeleton,
+});
+export type { CompPin, CompsMapProps } from "./comps-map";
