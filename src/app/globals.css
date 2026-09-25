@@ -1,0 +1,144 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/fraunces";
+
+/*
+ * Dwellwise design tokens. Deep forest brand, warm paper neutrals, one warm
+ * accent for price moves. All colours are tokens so theming stays central.
+ */
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
+
+  --color-paper: #f7f5f0;
+  --color-paper-2: #efebe3;
+  --color-surface: #ffffff;
+  --color-line: #e6e1d7;
+  --color-line-strong: #d4cdc0;
+  --color-ink: #16211d;
+  --color-ink-2: #3c4843;
+  --color-muted: #6b756f;
+  --color-subtle: #97a09a;
+
+  --color-brand-50: #eef7f3;
+  --color-brand-100: #d6ede4;
+  --color-brand-200: #acd9c8;
+  --color-brand-300: #78bea5;
+  --color-brand-400: #3f9c80;
+  --color-brand-500: #1d7c63;
+  --color-brand-600: #0f5c4c;
+  --color-brand-700: #0b4a3d;
+  --color-brand-800: #093a31;
+  --color-brand-900: #062a23;
+
+  --color-clay-50: #fcf1ec;
+  --color-clay-100: #f8dfd4;
+  --color-clay-500: #d0643f;
+  --color-clay-600: #b5502e;
+
+  --color-gold-100: #f6ecd2;
+  --color-gold-500: #c3962b;
+  --color-gold-700: #8a6718;
+
+  --color-sky-100: #e3eef6;
+  --color-sky-600: #2f6690;
+
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
+
+  --shadow-card: 0 1px 2px rgb(22 33 29 / 0.04), 0 4px 16px -4px rgb(22 33 29 / 0.08);
+  --shadow-lift: 0 2px 4px rgb(22 33 29 / 0.05), 0 18px 40px -12px rgb(22 33 29 / 0.22);
+  --shadow-pop: 0 10px 40px -8px rgb(22 33 29 / 0.28);
+
+  --animate-fade-up: fade-up 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: -400px 0;
+    }
+    to {
+      background-position: 400px 0;
+    }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--color-brand-100);
+  }
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+  }
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  letter-spacing: -0.02em;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility skeleton {
+  background: linear-gradient(90deg, #ece8df 0px, #f5f2ec 120px, #ece8df 240px);
+  background-size: 800px 100%;
+  animation: var(--animate-shimmer);
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Leaflet overrides — calmer, on-brand map chrome */
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: #e9e6df;
+}
+.leaflet-control-attribution {
+  font-size: 10px;
+  background: rgb(255 255 255 / 0.8) !important;
+}
+.leaflet-bar {
+  border: none !important;
+  box-shadow: var(--shadow-card) !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+.leaflet-bar a {
+  color: var(--color-ink) !important;
+}
+.dw-pin {
+  background: transparent;
+  border: none;
+}
