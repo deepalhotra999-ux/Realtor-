@@ -1,7 +1,8 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db";
-import { appSettings, auditLogs, featureFlags } from "@/server/db/schema";
+import { appSettings, featureFlags } from "@/server/db/schema";
+import { recordAudit } from "@/server/audit";
 import {
   parseSettings,
   SETTINGS_SECTIONS,
@@ -42,6 +43,7 @@ export async function updateSettings<S extends SettingsSection>(
   patch: Partial<SettingsOf<S>>,
   actorId: string | null,
 ): Promise<SettingsOf<S>> {
+  cache.delete(section);
   const current = await getSettings(section);
   const next = SETTINGS_SECTIONS[section].parse({ ...current, ...patch }) as SettingsOf<S>;
   const db = getDb();
@@ -52,12 +54,12 @@ export async function updateSettings<S extends SettingsSection>(
       target: appSettings.key,
       set: { value: next, updatedById: actorId, updatedAt: new Date() },
     });
-  await db.insert(auditLogs).values({
-    actorId,
+  await recordAudit({
+    actor: actorId ? { type: "admin", id: actorId } : { type: "system", rule: "settings" },
     action: `settings.${section}.update`,
-    targetType: "settings",
-    targetId: section,
-    meta: { patch },
+    target: { type: "settings", id: section },
+    before: current as Record<string, unknown>,
+    after: next as Record<string, unknown>,
   });
   cache.delete(section);
   return next;

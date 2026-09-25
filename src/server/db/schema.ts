@@ -49,8 +49,21 @@ export const userRole = pgEnum("user_role", [
   "broker",
   "property_manager",
   "admin",
+  "developer",
 ]);
-export const userStatus = pgEnum("user_status", ["active", "suspended", "pending"]);
+/**
+ * Account enforcement state. `pending` is legacy (unverified signups);
+ * warned/restricted keep access, suspended/banned/deleted do not.
+ */
+export const userStatus = pgEnum("user_status", [
+  "active",
+  "suspended",
+  "pending",
+  "warned",
+  "restricted",
+  "banned",
+  "deleted",
+]);
 
 export const propertyType = pgEnum("property_type", [
   "single_family",
@@ -63,6 +76,10 @@ export const propertyType = pgEnum("property_type", [
 ]);
 
 export const listingType = pgEnum("listing_type", ["sale", "rent"]);
+/**
+ * Lifecycle: draft → pending_review → active (published; "promoted" is derived
+ * from listing_promotions) → expired | sold | rented | suspended → removed.
+ */
 export const listingStatus = pgEnum("listing_status", [
   "draft",
   "coming_soon",
@@ -71,6 +88,17 @@ export const listingStatus = pgEnum("listing_status", [
   "sold",
   "rented",
   "off_market",
+  "pending_review",
+  "expired",
+  "suspended",
+  "removed",
+]);
+export const listingVerification = pgEnum("listing_verification", [
+  "unverified",
+  "pending_verification",
+  "verified",
+  "flagged",
+  "suspended",
 ]);
 export const dataSource = pgEnum("data_source", ["seed", "manual", "mls", "import"]);
 export const mediaKind = pgEnum("media_kind", ["photo", "floorplan", "video", "virtual_tour"]);
@@ -130,6 +158,41 @@ export const moderationStatus = pgEnum("moderation_status", [
   "removed",
 ]);
 export const reportStatus = pgEnum("report_status", ["open", "reviewing", "resolved", "dismissed"]);
+export const priorityLevel = pgEnum("priority_level", ["low", "medium", "high", "critical"]);
+export const riskLevel = pgEnum("risk_level", ["low", "medium", "high", "critical"]);
+export const moderationCaseStatus = pgEnum("moderation_case_status", [
+  "clear",
+  "flagged",
+  "pending_review",
+  "approved",
+  "rejected",
+  "suspended",
+]);
+export const verificationKind = pgEnum("verification_kind", [
+  "email",
+  "phone",
+  "identity",
+  "ownership",
+  "license",
+  "brokerage",
+]);
+export const verificationStatus = pgEnum("verification_status", [
+  "pending",
+  "approved",
+  "rejected",
+  "expired",
+  "cancelled",
+]);
+export const actorType = pgEnum("actor_type", ["system", "admin", "user"]);
+/** A failed attempt goes back to `queued` with backoff; `dead` = out of attempts. */
+export const jobStatus = pgEnum("job_status", ["queued", "running", "succeeded", "dead"]);
+export const promotionStatus = pgEnum("promotion_status", [
+  "pending_payment",
+  "scheduled",
+  "active",
+  "expired",
+  "canceled",
+]);
 
 export const featureKind = pgEnum("feature_kind", ["boolean", "limit", "metered"]);
 export const planAudience = pgEnum("plan_audience", [
@@ -174,6 +237,21 @@ export const users = pgTable(
     phone: text("phone"),
     avatarUrl: text("avatar_url"),
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    phoneVerifiedAt: timestamp("phone_verified_at", { withTimezone: true }),
+    /** 0 basic · 1 verified contact · 2 verified seller · 3 verified agent/broker. */
+    verificationLevel: integer("verification_level").notNull().default(0),
+    /** Admin-granted capability overrides, e.g. "listings.publish". */
+    capabilities: text("capabilities")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    riskScore: integer("risk_score").notNull().default(0),
+    riskLevel: riskLevel("risk_level").notNull().default("low"),
+    riskUpdatedAt: timestamp("risk_updated_at", { withTimezone: true }),
+    /** When a timed status (warned/suspended) should lapse back to active. */
+    statusUntil: timestamp("status_until", { withTimezone: true }),
+    statusReason: text("status_reason"),
+    signupIp: text("signup_ip"),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     /** Buyer/renter preferences used for personalized matching. */
     preferences: jsonb("preferences").$type<Record<string, unknown>>().notNull().default({}),
@@ -333,7 +411,16 @@ export const listings = pgTable(
     isFeatured: boolean("is_featured").notNull().default(false),
     featuredUntil: timestamp("featured_until", { withTimezone: true }),
     listedAt: timestamp("listed_at", { withTimezone: true }),
+    /** Auto-expiry for published listings (null = never). */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
     closedAt: timestamp("closed_at", { withTimezone: true }),
+    verificationStatus: listingVerification("verification_status").notNull().default("unverified"),
+    riskScore: integer("risk_score").notNull().default(0),
+    /** Normalised-description fingerprint for duplicate detection. */
+    contentHash: text("content_hash"),
+    /** Admin ranking override: added to the computed score (can be negative). */
+    rankAdjustment: integer("rank_adjustment").notNull().default(0),
+    pinnedUntil: timestamp("pinned_until", { withTimezone: true }),
     closePrice: integer("close_price"),
     // Rental specifics
     availableFrom: date("available_from"),
@@ -359,6 +446,8 @@ export const listings = pgTable(
     index("listings_search_idx").on(t.status, t.listingType, t.price),
     index("listings_agent_idx").on(t.agentId),
     index("listings_fts_idx").using("gin", t.searchVector),
+    index("listings_expires_idx").on(t.expiresAt),
+    index("listings_content_hash_idx").on(t.contentHash),
   ],
 );
 
@@ -372,6 +461,8 @@ export const propertyMedia = pgTable(
     kind: mediaKind("kind").notNull().default("photo"),
     url: text("url").notNull(),
     storageKey: text("storage_key"),
+    /** SHA-256 of the uploaded bytes, for duplicate-photo detection. */
+    contentHash: text("content_hash"),
     alt: text("alt").notNull().default(""),
     caption: text("caption"),
     width: integer("width"),
@@ -379,7 +470,10 @@ export const propertyMedia = pgTable(
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("property_media_property_idx").on(t.propertyId, t.sortOrder)],
+  (t) => [
+    index("property_media_property_idx").on(t.propertyId, t.sortOrder),
+    index("property_media_hash_idx").on(t.contentHash),
+  ],
 );
 
 export const priceHistory = pgTable(
@@ -667,12 +761,290 @@ export const reports = pgTable(
     reason: text("reason").notNull(),
     details: text("details"),
     status: reportStatus("status").notNull().default("open"),
+    priority: priorityLevel("priority").notNull().default("medium"),
+    /** Why the priority was chosen (risk signals), for reviewers. */
+    priorityReason: text("priority_reason"),
+    /** User behind the target (listing agent, review author …), for aggregation. */
+    subjectUserId: uuid("subject_user_id").references(() => users.id, { onDelete: "set null" }),
     resolvedById: uuid("resolved_by_id").references(() => users.id, { onDelete: "set null" }),
     resolution: text("resolution"),
     ...timestamps,
   },
-  (t) => [index("reports_status_idx").on(t.status)],
+  (t) => [
+    index("reports_status_idx").on(t.status),
+    index("reports_target_idx").on(t.targetType, t.targetId),
+    index("reports_subject_idx").on(t.subjectUserId),
+  ],
 );
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Trust, verification & enforcement
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * One row per verification attempt. Only non-sensitive metadata lives in
+ * `data`; uploaded evidence is referenced by storage key and purged after
+ * `purgeAfter` (configurable retention).
+ */
+export const verifications = pgTable(
+  "verifications",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: verificationKind("kind").notNull(),
+    status: verificationStatus("status").notNull().default("pending"),
+    provider: text("provider").notNull(),
+    providerRef: text("provider_ref"),
+    /** Target for the check, e.g. a phone number, license number or listing id. */
+    subject: text("subject"),
+    data: jsonb("data").$type<Record<string, unknown>>().notNull().default({}),
+    documentKeys: text("document_keys")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    /** Hashed one-time code for email/phone checks. */
+    codeHash: text("code_hash"),
+    attempts: integer("attempts").notNull().default(0),
+    reviewerId: uuid("reviewer_id").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    decisionReason: text("decision_reason"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    purgeAfter: timestamp("purge_after", { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    index("verifications_user_idx").on(t.userId, t.kind),
+    index("verifications_status_idx").on(t.status),
+  ],
+);
+
+/** Feature-level restrictions (listing creation, messaging …), optionally timed. */
+export const accountRestrictions = pgTable(
+  "account_restrictions",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** listings | messaging | promotions | leads | contact | reviews | api */
+    feature: text("feature").notNull(),
+    reason: text("reason").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    createdById: uuid("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    /** Automation rule that created it (null when an admin did). */
+    source: text("source"),
+    liftedAt: timestamp("lifted_at", { withTimezone: true }),
+    liftedById: uuid("lifted_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("account_restrictions_user_idx").on(t.userId, t.feature),
+    index("account_restrictions_ends_idx").on(t.endsAt),
+  ],
+);
+
+export const strikes = pgTable(
+  "strikes",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    violationType: text("violation_type").notNull(),
+    reason: text("reason").notNull(),
+    /** e.g. "listing:<id>" or "report:<id>". */
+    sourceRef: text("source_ref"),
+    createdById: uuid("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    source: text("source"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("strikes_user_idx").on(t.userId, t.createdAt)],
+);
+
+/** Automated or manual moderation decisions about a piece of content or account. */
+export const moderationCases = pgTable(
+  "moderation_cases",
+  {
+    id: id(),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id").notNull(),
+    /** Owner of the content, when known. */
+    subjectUserId: uuid("subject_user_id").references(() => users.id, { onDelete: "set null" }),
+    status: moderationCaseStatus("status").notNull().default("pending_review"),
+    priority: priorityLevel("priority").notNull().default("medium"),
+    reason: text("reason").notNull(),
+    /** 0–1 confidence of the detector. */
+    confidence: real("confidence").notNull().default(0),
+    /** rules | ollama | duplicate | risk | report | admin */
+    source: text("source").notNull(),
+    signals: jsonb("signals").$type<Record<string, unknown>[]>().notNull().default([]),
+    /** Automated action already taken (e.g. "listing.hidden"), for review context. */
+    autoAction: text("auto_action"),
+    reviewedById: uuid("reviewed_by_id").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    resolution: text("resolution"),
+    ...timestamps,
+  },
+  (t) => [
+    index("moderation_cases_status_idx").on(t.status, t.priority),
+    index("moderation_cases_target_idx").on(t.targetType, t.targetId),
+    index("moderation_cases_subject_idx").on(t.subjectUserId),
+  ],
+);
+
+/** Risk score history for users and listings (the current value is denormalised). */
+export const riskAssessments = pgTable(
+  "risk_assessments",
+  {
+    id: id(),
+    subjectType: text("subject_type").notNull(),
+    subjectId: text("subject_id").notNull(),
+    score: integer("score").notNull(),
+    level: riskLevel("level").notNull(),
+    signals: jsonb("signals").$type<Record<string, unknown>[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("risk_assessments_subject_idx").on(t.subjectType, t.subjectId, t.createdAt)],
+);
+
+/**
+ * Security signals for multi-account and abuse detection. IPs are stored as
+ * given plus a /24 (v4) or /48 (v6) prefix; device fingerprints are salted
+ * hashes of coarse browser traits, never raw identifiers.
+ */
+export const accountSignals = pgTable(
+  "account_signals",
+  {
+    id: id(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    ip: text("ip"),
+    ipPrefix: text("ip_prefix"),
+    deviceHash: text("device_hash"),
+    meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("account_signals_user_idx").on(t.userId, t.createdAt),
+    index("account_signals_ip_idx").on(t.ipPrefix),
+    index("account_signals_device_idx").on(t.deviceHash),
+  ],
+);
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Promotions
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export const promotionProducts = pgTable(
+  "promotion_products",
+  {
+    id: id(),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    /** search_boost | featured | pin_top | top_search | premium | homepage | map_highlight | neighborhood_spotlight | open_house | price_drop */
+    placement: text("placement").notNull(),
+    /** Minor units. 0 = free promotion. */
+    price: integer("price").notNull().default(0),
+    currency: text("currency").notNull().default("USD"),
+    durationDays: integer("duration_days").notNull().default(7),
+    /** Higher wins within the same placement. */
+    priority: integer("priority").notNull().default(10),
+    /** e.g. { listingTypes, minVerificationLevel, requirePhotos, maxRiskScore } */
+    eligibility: jsonb("eligibility").$type<Record<string, unknown>>().notNull().default({}),
+    /** Maximum concurrently active promotions of this product (null = unlimited). */
+    maxInventory: integer("max_inventory"),
+    availableFrom: timestamp("available_from", { withTimezone: true }),
+    availableUntil: timestamp("available_until", { withTimezone: true }),
+    isActive: boolean("is_active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("promotion_products_key_uq").on(t.key)],
+);
+
+export const listingPromotions = pgTable(
+  "listing_promotions",
+  {
+    id: id(),
+    listingId: uuid("listing_id")
+      .notNull()
+      .references(() => listings.id, { onDelete: "cascade" }),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => promotionProducts.id, { onDelete: "restrict" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    status: promotionStatus("status").notNull().default("scheduled"),
+    placement: text("placement").notNull(),
+    priority: integer("priority").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    amount: integer("amount").notNull().default(0),
+    paymentId: uuid("payment_id").references(() => payments.id, { onDelete: "set null" }),
+    impressions: integer("impressions").notNull().default(0),
+    views: integer("views").notNull().default(0),
+    saves: integer("saves").notNull().default(0),
+    leads: integer("leads").notNull().default(0),
+    /** Admin who granted/extended it, if any. */
+    grantedById: uuid("granted_by_id").references(() => users.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (t) => [
+    index("listing_promotions_listing_idx").on(t.listingId, t.status),
+    index("listing_promotions_status_idx").on(t.status, t.endsAt),
+    index("listing_promotions_start_idx").on(t.status, t.startsAt),
+  ],
+);
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Background jobs
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Postgres-backed job queue (claimed with FOR UPDATE SKIP LOCKED). */
+export const jobs = pgTable(
+  "jobs",
+  {
+    id: id(),
+    type: text("type").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    status: jobStatus("status").notNull().default("queued"),
+    priority: integer("priority").notNull().default(0),
+    runAt: timestamp("run_at", { withTimezone: true }).notNull().defaultNow(),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(5),
+    /** While queued/running, only one job per key may exist. */
+    dedupeKey: text("dedupe_key"),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    lockedBy: text("locked_by"),
+    lastError: text("last_error"),
+    result: jsonb("result").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("jobs_claim_idx").on(t.status, t.runAt, t.priority),
+    uniqueIndex("jobs_dedupe_uq")
+      .on(t.dedupeKey)
+      .where(sql`status in ('queued', 'running') and dedupe_key is not null`),
+  ],
+);
+
+/** Recurring jobs. The worker enqueues `jobType` every `intervalSeconds`. */
+export const jobSchedules = pgTable("job_schedules", {
+  name: text("name").primaryKey(),
+  jobType: text("job_type").notNull(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  intervalSeconds: integer("interval_seconds").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  description: text("description").notNull().default(""),
+  lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+  nextRunAt: timestamp("next_run_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Platform configuration
@@ -894,12 +1266,25 @@ export const auditLogs = pgTable(
   "audit_logs",
   {
     id: id(),
+    /** SYSTEM (automation), ADMIN or USER. */
+    actorType: actorType("actor_type").notNull().default("admin"),
     actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
+    /** Automation rule / job name for SYSTEM actions. */
+    actorLabel: text("actor_label"),
     action: text("action").notNull(),
     targetType: text("target_type"),
     targetId: text("target_id"),
+    reason: text("reason"),
+    before: jsonb("before").$type<Record<string, unknown>>(),
+    after: jsonb("after").$type<Record<string, unknown>>(),
     meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
+    ip: text("ip"),
+    userAgent: text("user_agent"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("audit_logs_created_idx").on(t.createdAt)],
+  (t) => [
+    index("audit_logs_created_idx").on(t.createdAt),
+    index("audit_logs_target_idx").on(t.targetType, t.targetId),
+    index("audit_logs_actor_idx").on(t.actorId),
+  ],
 );

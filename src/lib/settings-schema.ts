@@ -57,10 +57,32 @@ export const aiSettingsSchema = z.object({
 });
 export type AISettings = z.infer<typeof aiSettingsSchema>;
 
+/**
+ * Admin → Automation & Trust. Master switches for every background process.
+ * Thresholds and rules for each system live in the `trust` section.
+ */
+export const automationSettingsSchema = z.object({
+  autoModeration: z.boolean().default(true),
+  duplicateDetection: z.boolean().default(true),
+  autoRanking: z.boolean().default(true),
+  listingExpiration: z.boolean().default(true),
+  promotionExpiration: z.boolean().default(true),
+  accountEnforcement: z.boolean().default(true),
+  spamDetection: z.boolean().default(true),
+  riskScoring: z.boolean().default(true),
+  verificationRequirements: z.boolean().default(true),
+  signupProtection: z.boolean().default(true),
+  priceDropAlerts: z.boolean().default(true),
+  savedSearchAlerts: z.boolean().default(true),
+  notifications: z.boolean().default(true),
+});
+export type AutomationSettings = z.infer<typeof automationSettingsSchema>;
+
 export const SETTINGS_SECTIONS = {
   general: generalSettingsSchema,
   monetization: monetizationSettingsSchema,
   ai: aiSettingsSchema,
+  automation: automationSettingsSchema,
 } as const;
 
 export type SettingsSection = keyof typeof SETTINGS_SECTIONS;

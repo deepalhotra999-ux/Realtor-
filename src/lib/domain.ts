@@ -26,23 +26,45 @@ export type ListingType = (typeof LISTING_TYPES)[number];
 
 export const LISTING_STATUSES = [
   "draft",
+  "pending_review",
   "coming_soon",
   "active",
   "pending",
   "sold",
   "rented",
   "off_market",
+  "expired",
+  "suspended",
+  "removed",
 ] as const;
 export type ListingStatus = (typeof LISTING_STATUSES)[number];
 
+/** Statuses a listing owner may set; the rest are set by automation or admins. */
+export const OWNER_LISTING_STATUSES = [
+  "draft",
+  "coming_soon",
+  "active",
+  "pending",
+  "sold",
+  "rented",
+  "off_market",
+] as const satisfies readonly ListingStatus[];
+
+/** Publicly visible (searchable) statuses. */
+export const PUBLIC_LISTING_STATUSES = ["active", "coming_soon", "pending"] as const;
+
 export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
   draft: "Draft",
+  pending_review: "In review",
   coming_soon: "Coming soon",
   active: "For sale",
   pending: "Pending",
   sold: "Sold",
   rented: "Rented",
   off_market: "Off market",
+  expired: "Expired",
+  suspended: "Suspended",
+  removed: "Removed",
 };
 
 /** Normalised amenity keys stored in `properties.features`. */

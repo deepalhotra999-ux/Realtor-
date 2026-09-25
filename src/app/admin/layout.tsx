@@ -50,6 +50,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       items: [
         { href: "/admin/ai", label: "AI", icon: "sparkles" },
         { href: "/admin/notifications", label: "Notifications", icon: "bell" },
+        { href: "/admin/jobs", label: "Background jobs", icon: "activity" },
         { href: "/admin/flags", label: "Feature flags", icon: "toggle" },
         { href: "/admin/settings", label: "Settings", icon: "settings" },
       ],

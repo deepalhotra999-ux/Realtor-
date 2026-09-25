@@ -12,6 +12,7 @@ import {
   saveMonetizationSettingsAction,
   savePlanAction,
   sendTestEmailAction,
+  setScheduleIntervalAction,
   testAIAction,
   type AdminFormState,
 } from "@/server/actions/admin";
@@ -20,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+import { submitKeepingValues } from "@/components/ui/form-submit";
 function Status({ state }: { state: AdminFormState }) {
   if (!state) return null;
   return state.error ? (
@@ -72,7 +74,7 @@ function SwitchRow({
 export function GeneralSettingsForm({ s }: { s: GeneralSettings }) {
   const [state, action, pending] = useActionState(saveGeneralSettingsAction, undefined);
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Site name">
           <Input name="siteName" defaultValue={s.siteName} required />
@@ -153,7 +155,7 @@ export function MonetizationForm({
   const [state, action, pending] = useActionState(saveMonetizationSettingsAction, undefined);
   const [on, setOn] = useState(s.subscriptionsEnabled);
   return (
-    <form action={action} className="space-y-6">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-6">
       <div
         className={cn(
           "rounded-2xl border p-5 transition",
@@ -274,7 +276,7 @@ export function MonetizationForm({
 export function AISettingsForm({ s }: { s: AISettings }) {
   const [state, action, pending] = useActionState(saveAISettingsAction, undefined);
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-5">
       <div className="divide-line divide-y">
         <SwitchRow
           name="naturalLanguageSearch"
@@ -337,7 +339,7 @@ export function AISettingsForm({ s }: { s: AISettings }) {
 export function AIPlayground() {
   const [state, action, pending] = useActionState(testAIAction, undefined);
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-3">
       <Textarea
         name="prompt"
         rows={3}
@@ -362,7 +364,11 @@ export function AIPlayground() {
 export function TestEmailForm({ defaultTo }: { defaultTo: string }) {
   const [state, action, pending] = useActionState(sendTestEmailAction, undefined);
   return (
-    <form action={action} className="flex flex-wrap items-start gap-2">
+    <form
+      action={action}
+      onSubmit={submitKeepingValues(action)}
+      className="flex flex-wrap items-start gap-2"
+    >
       <Input
         name="to"
         type="email"
@@ -380,10 +386,46 @@ export function TestEmailForm({ defaultTo }: { defaultTo: string }) {
   );
 }
 
+export function ScheduleIntervalForm({ name, seconds }: { name: string; seconds: number }) {
+  const [state, action, pending] = useActionState(
+    setScheduleIntervalAction.bind(null, name),
+    undefined,
+  );
+  return (
+    <form
+      action={action}
+      onSubmit={submitKeepingValues(action)}
+      className="flex items-center gap-1.5"
+    >
+      <Input
+        name="minutes"
+        type="number"
+        min={1}
+        max={10080}
+        step="any"
+        defaultValue={+(seconds / 60).toFixed(2)}
+        className="h-8 w-20 text-xs"
+        aria-label={`Interval in minutes for ${name}`}
+      />
+      <span className="text-muted text-xs">min</span>
+      <Button
+        type="submit"
+        size="sm"
+        variant="ghost"
+        disabled={pending}
+        className="h-8 px-2 text-xs"
+      >
+        {pending ? "…" : "Set"}
+      </Button>
+      {state?.error ? <span className="text-clay-600 text-xs">{state.error}</span> : null}
+    </form>
+  );
+}
+
 export function RunAlertsForm() {
   const [state, action, pending] = useActionState(runAlertsNowAction, undefined);
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-3">
       <Button type="submit" variant="secondary" disabled={pending}>
         {pending ? "Running…" : "Run saved-search alerts now"}
       </Button>
@@ -407,7 +449,7 @@ export function FlagForm({
 }) {
   const [state, action, pending] = useActionState(saveFlagAction, undefined);
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Key">
           <Input
@@ -503,7 +545,7 @@ export function PlanForm({
   }, undefined);
   const p = plan;
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-5">
       {p?.id ? <input type="hidden" name="id" value={p.id} /> : null}
       <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Name">
@@ -628,7 +670,7 @@ export function PlanForm({
 export function FeatureForm() {
   const [state, action, pending] = useActionState(saveFeatureAction, undefined);
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Key">
           <Input name="key" required placeholder="listings.virtual_tours" />
@@ -666,7 +708,7 @@ export function FeatureForm() {
 export function GrantPlanForm({ plans }: { plans: { id: string; name: string }[] }) {
   const [state, action, pending] = useActionState(grantPlanAction, undefined);
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} onSubmit={submitKeepingValues(action)} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-[1.4fr_1fr_120px]">
         <Field label="User email">
           <Input name="email" type="email" required placeholder="agent@dwellwise.local" />

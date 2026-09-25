@@ -33,6 +33,25 @@ const agentColumns = {
   activeListings: sql<number>`(select count(*)::int from listings l where l.agent_id = ${users.id} and l.status in ('active','coming_soon'))`,
 };
 
+/**
+ * Recompute an agent's rating from published reviews. Lives here (server-only)
+ * rather than in a "use server" file so browsers can't invoke it directly.
+ */
+export async function refreshAgentRating(agentId: string) {
+  const db = getDb();
+  const [agg] = await db
+    .select({
+      avg: sql<number>`coalesce(avg(${reviews.rating}), 0)::real`,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(reviews)
+    .where(and(eq(reviews.agentId, agentId), eq(reviews.status, "published")));
+  await db
+    .update(agentProfiles)
+    .set({ ratingAvg: agg?.avg ?? 0, reviewCount: agg?.n ?? 0 })
+    .where(eq(agentProfiles.userId, agentId));
+}
+
 export async function listAgents(f: AgentFilters, limit = 60) {
   const conds = [eq(users.status, "active")];
   if (f.q) conds.push(or(ilike(users.name, `%${f.q}%`), ilike(brokerages.name, `%${f.q}%`))!);

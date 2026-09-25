@@ -9,6 +9,8 @@ import {
   events,
   featureFlags,
   features,
+  jobSchedules,
+  jobs,
   leads,
   listings,
   outboundMessages,
@@ -565,17 +567,55 @@ export async function listFlagsAdmin() {
   return getDb().select().from(featureFlags).orderBy(featureFlags.key);
 }
 
-export async function listAudit(page: number) {
+export async function listAudit(
+  page: number,
+  f: { actorType?: string; targetType?: string; targetId?: string; q?: string } = {},
+) {
   const db = getDb();
+  const conds: SQL[] = [];
+  if (f.actorType && f.actorType !== "all")
+    conds.push(sql`${auditLogs.actorType} = ${f.actorType}`);
+  if (f.targetType) conds.push(eq(auditLogs.targetType, f.targetType));
+  if (f.targetId) conds.push(eq(auditLogs.targetId, f.targetId));
+  if (f.q) conds.push(ilike(auditLogs.action, `%${f.q}%`));
+  const where = conds.length ? and(...conds) : undefined;
   const [rows, [{ n }]] = await Promise.all([
     db
       .select({ a: auditLogs, actor: users.email })
       .from(auditLogs)
       .leftJoin(users, eq(users.id, auditLogs.actorId))
+      .where(where)
       .orderBy(desc(auditLogs.createdAt))
       .limit(50)
       .offset((page - 1) * 50),
-    db.select({ n: count() }).from(auditLogs),
+    db.select({ n: count() }).from(auditLogs).where(where),
   ]);
   return { rows, total: n };
+}
+
+export async function getJobsOverview(status: string) {
+  const db = getDb();
+  const [counts, schedules, recent, [lag]] = await Promise.all([
+    db.select({ status: jobs.status, n: count() }).from(jobs).groupBy(jobs.status),
+    db.select().from(jobSchedules).orderBy(jobSchedules.name),
+    db
+      .select()
+      .from(jobs)
+      .where(status === "all" ? undefined : sql`${jobs.status} = ${status}`)
+      .orderBy(desc(jobs.createdAt))
+      .limit(60),
+    db
+      .select({
+        oldestQueued: sql<Date | null>`min(${jobs.runAt}) filter (where ${jobs.status} = 'queued' and ${jobs.runAt} <= now())`,
+        lastFinished: sql<Date | null>`max(${jobs.finishedAt})`,
+      })
+      .from(jobs),
+  ]);
+  return {
+    counts: Object.fromEntries(counts.map((c) => [c.status, c.n])) as Record<string, number>,
+    schedules,
+    recent,
+    oldestQueued: lag.oldestQueued ? new Date(lag.oldestQueued) : null,
+    lastFinished: lag.lastFinished ? new Date(lag.lastFinished) : null,
+  };
 }

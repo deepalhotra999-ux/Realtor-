@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { and, eq, gt, inArray, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/server/db";
-import { auditLogs, payments, plans, subscriptions } from "@/server/db/schema";
+import { payments, plans, subscriptions } from "@/server/db/schema";
+import { recordAudit } from "@/server/audit";
 import { requireUser } from "@/server/auth/session";
 import { getSettings } from "@/server/settings";
 import { getCurrentSubscription } from "@/server/entitlements";
@@ -76,7 +77,7 @@ export async function completeCheckoutAction(sessionId: string, simulate: "succe
       amount: req.amount,
       currency: req.currency,
       status: "failed",
-      description: `${req.planName} (${req.interval}ly) — declined`,
+      description: `${req.planName} (${req.interval}ly) â€” declined`,
       provider: provider.name,
       providerRef: result.paymentRef ?? null,
     });
@@ -129,11 +130,10 @@ export async function completeCheckoutAction(sessionId: string, simulate: "succe
       provider: provider.name,
       providerRef: result.paymentRef ?? null,
     });
-  await db.insert(auditLogs).values({
-    actorId: user.id,
+  await recordAudit({
+    actor: { type: "user", id: user.id },
     action: "subscription.checkout",
-    targetType: "subscription",
-    targetId: sub.id,
+    target: { type: "subscription", id: sub.id },
     meta: { plan: req.planKey, interval: req.interval, trialing },
   });
   await notify(

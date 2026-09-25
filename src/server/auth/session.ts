@@ -23,7 +23,10 @@ export type SessionUser = Pick<
   "id" | "email" | "name" | "role" | "status" | "avatarUrl" | "phone"
 >;
 
-export const PRO_ROLES: Role[] = ["agent", "broker", "property_manager", "admin"];
+export const PRO_ROLES: Role[] = ["agent", "broker", "property_manager", "developer", "admin"];
+
+/** Account statuses that cannot sign in or keep a session. */
+export const BLOCKED_STATUSES: SessionUser["status"][] = ["suspended", "banned", "deleted"];
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
@@ -75,7 +78,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
       .innerJoin(users, eq(sessions.userId, users.id))
       .where(and(eq(sessions.id, id), gt(sessions.expiresAt, new Date())))
       .limit(1);
-    if (!row || row.status === "suspended") return null;
+    if (!row || BLOCKED_STATUSES.includes(row.status)) return null;
 
     // Sliding expiry: extend long-lived sessions in the background.
     if (row.expiresAt.getTime() - Date.now() < REFRESH_WHEN_DAYS_LEFT * 86_400_000) {

@@ -5,7 +5,6 @@ import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/server/db";
 import {
-  agentProfiles,
   conversationParticipants,
   conversations,
   favorites,
@@ -22,6 +21,7 @@ import { getCurrentUser } from "@/server/auth/session";
 import { getSettings } from "@/server/settings";
 import { notify } from "@/server/notify";
 import { trackEvent } from "@/server/listings";
+import { refreshAgentRating } from "@/server/agents";
 import { parseSearchParams } from "@/lib/search/query";
 
 export type FormState = { ok?: boolean; error?: string; message?: string } | undefined;
@@ -300,21 +300,6 @@ export async function submitReviewAction(_prev: FormState, form: FormData): Prom
         ? "Thanks! Your review will appear after a quick moderation check."
         : "Thanks for your review!",
   };
-}
-
-export async function refreshAgentRating(agentId: string) {
-  const db = getDb();
-  const [agg] = await db
-    .select({
-      avg: sql<number>`coalesce(avg(${reviews.rating}), 0)::real`,
-      n: sql<number>`count(*)::int`,
-    })
-    .from(reviews)
-    .where(and(eq(reviews.agentId, agentId), eq(reviews.status, "published")));
-  await db
-    .update(agentProfiles)
-    .set({ ratingAvg: agg?.avg ?? 0, reviewCount: agg?.n ?? 0 })
-    .where(eq(agentProfiles.userId, agentId));
 }
 
 /* ── Contact an agent from their profile ─────────────────────────────────── */

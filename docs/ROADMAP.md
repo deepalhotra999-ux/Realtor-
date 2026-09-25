@@ -75,6 +75,32 @@ needed. Rule of thumb: in a join-less `.select({...})`, never interpolate a colu
 Not built (intentionally): renewal charging/dunning — the mock provider never moves money, so there is
 nothing to renew. A real adapter would drive renewals via its webhooks.
 
+## Phase 6 — Trust, safety, promotions & automation (in progress)
+
+Zero paid services; every external capability behind a provider interface.
+
+- **6.1 Foundation ✅**
+  - Schema (`drizzle/0002_trust_foundation.sql`): verification levels, capabilities, risk score and timed
+    status on users; lifecycle states (`pending_review`, `expired`, `suspended`, `removed`), verification
+    status, risk, content hash, rank adjustment and pinning on listings; photo hashes; report priority;
+    `verifications`, `account_restrictions`, `strikes`, `moderation_cases`, `risk_assessments`,
+    `account_signals`, `promotion_products`, `listing_promotions`, `jobs`, `job_schedules`
+  - Job queue in Postgres (`src/server/jobs/queue.ts`): `FOR UPDATE SKIP LOCKED` claims, dedupe keys,
+    exponential backoff → `dead`, stale-job reaping, exactly-once interval schedules
+  - Worker (`pnpm worker`, `scripts/worker.ts`): runs outside Next.js; handlers register in
+    `src/server/jobs/register.ts`
+  - AuditLogService (`src/server/audit.ts`): SYSTEM / ADMIN / USER actor, automation rule name, reason,
+    before/after diff, IP and user agent; all audit writes go through it
+  - Admin → Background jobs (health, pause/retime/run-now schedules, retry dead jobs); audit log shows
+    actor type, rule, reason and changes, with filters and per-target history
+  - "Automation & Trust" settings section (master switches; UI in 6.6)
+  - Tests: unit (`src/lib/jobs.test.ts`) and Postgres integration (`pnpm test:int`)
+- 6.2 Verification & account permissions — next
+- 6.3 Risk engine & moderation
+- 6.4 Listing lifecycle & reports
+- 6.5 Promotions & ranking
+- 6.6 Admin Trust & Safety centre, Automation & Trust settings UI, overrides everywhere
+
 ## Phase 5 — Engagement ✅
 
 - Saved-search alerts: `runSavedSearchAlerts()` (`src/server/jobs/alerts.ts`) with pure scheduling in

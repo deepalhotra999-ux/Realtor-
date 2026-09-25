@@ -4,11 +4,12 @@ import { redirect } from "next/navigation";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/server/db";
-import { agentProfiles, auditLogs, users } from "@/server/db/schema";
+import { agentProfiles, users } from "@/server/db/schema";
 import { getSettings } from "@/server/settings";
+import { recordAudit } from "@/server/audit";
 import { slugify } from "@/lib/slug";
 import { hashPassword, passwordProblems, verifyPassword } from "./password";
-import { createSession, destroySession } from "./session";
+import { BLOCKED_STATUSES, createSession, destroySession } from "./session";
 
 export type AuthState = { error?: string; fieldErrors?: Record<string, string> } | undefined;
 
@@ -41,7 +42,13 @@ export async function loginAction(_prev: AuthState, form: FormData): Promise<Aut
     user?.passwordHash ?? "scrypt$16384$8$1$AAAA$AAAA",
   );
   if (!user || !ok) return { error: "That email and password don't match." };
-  if (user.status === "suspended") return { error: "This account is suspended. Contact support." };
+  if (BLOCKED_STATUSES.includes(user.status))
+    return {
+      error:
+        user.status === "suspended"
+          ? `This account is suspended${user.statusUntil ? ` until ${user.statusUntil.toLocaleDateString("en-US")}` : ""}. Contact support.`
+          : "This account is no longer active. Contact support.",
+    };
 
   await createSession(user.id);
   const fallback = user.role === "admin" ? "/admin" : user.role === "consumer" ? "/" : "/pro";
@@ -100,11 +107,10 @@ export async function registerAction(_prev: AuthState, form: FormData): Promise<
         parsed.data.role === "property_manager" ? "Property manager" : "Real estate professional",
     });
   }
-  await db.insert(auditLogs).values({
-    actorId: user.id,
+  await recordAudit({
+    actor: { type: "user", id: user.id },
     action: "user.register",
-    targetType: "user",
-    targetId: user.id,
+    target: { type: "user", id: user.id },
     meta: { role: user.role },
   });
   await createSession(user.id);

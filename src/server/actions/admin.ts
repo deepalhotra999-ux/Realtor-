@@ -6,9 +6,10 @@ import { z } from "zod";
 import { getDb } from "@/server/db";
 import {
   agentProfiles,
-  auditLogs,
   featureFlags,
   features,
+  jobSchedules,
+  jobs,
   listings,
   planEntitlements,
   plans,
@@ -22,7 +23,9 @@ import { requireAdmin } from "@/server/auth/session";
 import { invalidateFlagCache, updateSettings } from "@/server/settings";
 import { sendEmail } from "@/server/notify";
 import { runSavedSearchAlerts } from "@/server/jobs/alerts";
-import { refreshAgentRating } from "@/server/actions/marketplace";
+import { runScheduleNow } from "@/server/jobs/queue";
+import { recordAudit } from "@/server/audit";
+import { refreshAgentRating } from "@/server/agents";
 import { getAI } from "@/providers";
 import {
   aiSettingsSchema,
@@ -40,7 +43,12 @@ async function audit(
   targetId: string,
   meta: Record<string, unknown> = {},
 ) {
-  await getDb().insert(auditLogs).values({ actorId, action, targetType, targetId, meta });
+  await recordAudit({
+    actor: { type: "admin", id: actorId },
+    action,
+    target: { type: targetType, id: targetId },
+    meta,
+  });
 }
 
 const uuid = z.string().uuid();
@@ -288,6 +296,82 @@ export async function runAlertsNowAction(): Promise<AdminFormState> {
     ok: r.errors === 0,
     message: `Checked ${r.checked} saved searches: ${r.due} due, ${r.notified} alerted (${r.listings} new listings)${r.errors ? `, ${r.errors} failed` : ""}.`,
   };
+}
+
+/* ── Background jobs (supervision & override) ────────────────────────────── */
+
+export async function setScheduleEnabledAction(name: string, enabled: boolean) {
+  const admin = await requireAdmin();
+  const [before] = await getDb().select().from(jobSchedules).where(eq(jobSchedules.name, name));
+  if (!before) throw new Error("Unknown schedule.");
+  await getDb().update(jobSchedules).set({ enabled }).where(eq(jobSchedules.name, name));
+  await recordAudit({
+    actor: { type: "admin", id: admin.id },
+    action: "schedule.toggle",
+    target: { type: "schedule", id: name },
+    before: { enabled: before.enabled },
+    after: { enabled },
+  });
+  revalidatePath("/admin/jobs");
+}
+
+export async function setScheduleIntervalAction(
+  name: string,
+  _prev: AdminFormState,
+  form: FormData,
+): Promise<AdminFormState> {
+  const admin = await requireAdmin();
+  const minutes = z.coerce.number().min(1).max(10_080).safeParse(form.get("minutes"));
+  if (!minutes.success) return { error: "Use 1 minute to 7 days." };
+  const [before] = await getDb().select().from(jobSchedules).where(eq(jobSchedules.name, name));
+  if (!before) return { error: "Unknown schedule." };
+  const intervalSeconds = Math.round(minutes.data * 60);
+  await getDb()
+    .update(jobSchedules)
+    .set({
+      intervalSeconds,
+      nextRunAt: sql`least(${jobSchedules.nextRunAt}, now() + make_interval(secs => ${intervalSeconds}))`,
+    })
+    .where(eq(jobSchedules.name, name));
+  await recordAudit({
+    actor: { type: "admin", id: admin.id },
+    action: "schedule.interval",
+    target: { type: "schedule", id: name },
+    before: { intervalSeconds: before.intervalSeconds },
+    after: { intervalSeconds },
+  });
+  revalidatePath("/admin/jobs");
+  return { ok: true, message: "Saved." };
+}
+
+export async function runScheduleNowAction(name: string) {
+  const admin = await requireAdmin();
+  const id = await runScheduleNow(name);
+  await recordAudit({
+    actor: { type: "admin", id: admin.id },
+    action: "schedule.run_now",
+    target: { type: "schedule", id: name },
+    meta: { jobId: id, alreadyQueued: id === null },
+  });
+  revalidatePath("/admin/jobs");
+}
+
+export async function retryJobAction(jobId: string) {
+  const admin = await requireAdmin();
+  const id = uuid.parse(jobId);
+  const [row] = await getDb()
+    .update(jobs)
+    .set({ status: "queued", attempts: 0, runAt: new Date(), finishedAt: null, lastError: null })
+    .where(and(eq(jobs.id, id), eq(jobs.status, "dead")))
+    .returning({ type: jobs.type });
+  if (row)
+    await recordAudit({
+      actor: { type: "admin", id: admin.id },
+      action: "job.retry",
+      target: { type: "job", id },
+      meta: { type: row.type },
+    });
+  revalidatePath("/admin/jobs");
 }
 
 /* ── Feature flags ───────────────────────────────────────────────────────── */
